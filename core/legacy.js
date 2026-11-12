@@ -4,6 +4,9 @@ import { newIsland, newSubject, defaultFamily, merge, fromB64, SUBJECT_SETTINGS 
 
 const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 const clone = v => JSON.parse(JSON.stringify(v));
+// the same keys with the same values (JSON), in any key order
+const canon = v => (Array.isArray(v) ? v.map(canon) : isObj(v) ? Object.fromEntries(Object.keys(v).sort().map(k => [k, canon(v[k])])) : v);
+const sameEntry = (a, b) => JSON.stringify(canon(a)) === JSON.stringify(canon(b));
 
 // ---- the old games' own migrate, moved here as they were (the old games' save.js; same merge and island shape) ----
 
@@ -174,7 +177,9 @@ export function mergeLegacy(state, subject, legacy, { force = false, keepSound =
   for (const f of Array.isArray(lg.friends) ? lg.friends : []) {
     if (!isObj(f)) continue;
     const item = { ...f, subject: f.subject || subject };
-    if (!friends.some(g => isObj(g) && g.characterId === item.characterId && g.subject === item.subject)) friends.push(item);
+    // only an entry the same in every field is the same friend (two friends with the same character finished on
+    // different days are two, as the old games kept them)
+    if (!friends.some(g => isObj(g) && sameEntry(g, item))) friends.push(item);
   }
 
   let profile = null;

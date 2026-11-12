@@ -68,6 +68,8 @@ export function migrate(raw) {
   const d = defaultState();
   for (const k of ['settings', 'profile', 'imported', 'arcade', 'subjects']) if (!isObj(st[k])) st[k] = d[k];
   for (const k of ['friends', 'usedCharacters']) if (!Array.isArray(st[k])) st[k] = d[k];
+  // a friend entry that is not an object (null, a string) would stop the friend room and island 8: dropped
+  st.friends = st.friends.filter(isObj);
   for (const subject of SUBJECTS) {
     if (!isObj(st.subjects[subject])) st.subjects[subject] = newSubject(subject);
     const sub = st.subjects[subject];
@@ -82,28 +84,109 @@ function defaultStorage() {
   try { return globalThis.localStorage || null; } catch { return null; }
 }
 
-// A broken save is kept aside under <key>-corrupt-<time> and the game starts from the default state.
+// Several pages can be open at once (two tabs, or a page the browser keeps in its back/forward cache), and each holds
+// the whole save in memory. So that one page does not write its stale copy of another subject over that subject's
+// newer progress, a state remembers (outside its own fields, never saved):
+//   OWN    the subject its page works on (loadState's `own`): a subject id, null for none (the entrance), ALL when not
+//          given (tests, tools: the old behaviour)
+//   READ   the save text the page last read or wrote
+//   CLAIM  subjects the page has just changed on purpose (claimSubjects: a pasted old code, a whole IW1: code, old saves
+//          brought in on load); they are written from memory once, on the next save
+// saveState: when the text in storage is no longer READ, another page has written since. If it is a newer version, this
+// page does not write and becomes readOnly. If it reads, every subject this page does not own or claim (its slice, its
+// imported flag, its friends) is taken from storage first, and a character another subject holds there stays in
+// usedCharacters. The shared fields (settings, profile, arcade, the rest of usedCharacters) are the last writer's.
+// If it does not read (broken), it is written over as before. Two pages of the same subject still overwrite each other.
+const ALL = '*';
+const OWN = new WeakMap(), READ = new WeakMap(), CLAIM = new WeakMap();
+
+// this page changes these subjects (or ALL) on purpose: they are written from memory on the next save
+export function claimSubjects(state, subjects) {
+  if (subjects === ALL) { CLAIM.set(state, ALL); return; }
+  const cur = CLAIM.get(state);
+  if (cur === ALL) return;
+  CLAIM.set(state, new Set([...(cur || []), ...[].concat(subjects)]));
+}
+export const CLAIM_ALL = ALL;
+
+// an earlier copy of a broken save with the same text (so a page opened again and again does not add one each time)
+function hasCorruptCopy(storage, txt) {
+  try {
+    for (let i = 0; i < storage.length; i++) {
+      const k = storage.key(i);
+      if (k && k.startsWith(SAVE_KEY + '-corrupt-') && storage.getItem(k) === txt) return true;
+    }
+  } catch { /* a storage that cannot be listed: make the copy */ }
+  return false;
+}
+
+// A broken save is kept aside under <key>-corrupt-<time> (once per text) and the game starts from the default state;
+// if the copy cannot be made, the default state is readOnly so that nothing writes over the broken save.
 // A newer save is left alone: the default state comes back with readOnly, and saveState will not write over it.
-export function loadState(storage) {
+export function loadState(storage, { own = ALL } = {}) {
   if (storage === undefined) storage = defaultStorage();
   let txt = null;
   try { txt = storage ? storage.getItem(SAVE_KEY) : null; } catch { txt = null; }
-  if (!txt) return defaultState();
+  const done = st => { OWN.set(st, own); READ.set(st, txt || null); return st; };
+  if (!txt) return done(defaultState());
   try {
-    return migrate(JSON.parse(txt));
+    return done(migrate(JSON.parse(txt)));
   } catch (e) {
-    if (e?.message === 'newer-save') return { ...defaultState(), readOnly: true };
-    try { storage.setItem(SAVE_KEY + '-corrupt-' + Date.now(), txt); } catch { /* ignore */ }
-    return defaultState();
+    if (e?.message === 'newer-save') return done({ ...defaultState(), readOnly: true });
+    if (!hasCorruptCopy(storage, txt)) {
+      try {
+        // never over an earlier copy made in the same millisecond
+        let k = SAVE_KEY + '-corrupt-' + Date.now();
+        for (let i = 1; storage.getItem(k) !== null; i++) k = SAVE_KEY + '-corrupt-' + Date.now() + '-' + i;
+        storage.setItem(k, txt);
+      } catch { return done({ ...defaultState(), readOnly: true }); }
+    }
+    return done(defaultState());
   }
+}
+
+// take what other pages wrote for the subjects this page neither owns nor claims; false: a newer save is there
+function takeOthers(state, now, own, claimed) {
+  let other;
+  try { other = migrate(JSON.parse(now)); } catch (e) { return e?.message !== 'newer-save'; }
+  const mine = s => s === own || claimed.has(s);
+  if (!isObj(state.subjects)) state.subjects = {};
+  if (!isObj(state.imported)) state.imported = {};
+  for (const s of SUBJECTS) {
+    if (mine(s)) continue;
+    state.subjects[s] = other.subjects[s];
+    state.imported[s] = other.imported[s];
+  }
+  const kept = (Array.isArray(state.friends) ? state.friends : []).filter(f => !isObj(f) || !SUBJECTS.includes(f.subject) || mine(f.subject));
+  const theirs = other.friends.filter(f => SUBJECTS.includes(f.subject) && !mine(f.subject));
+  state.friends = [...kept, ...theirs];
+  const held = new Set(SUBJECTS.filter(s => !mine(s)).map(s => state.subjects[s]?.characterId).filter(Boolean));
+  for (const f of theirs) if (f.characterId) held.add(f.characterId);
+  const used = Array.isArray(state.usedCharacters) ? [...state.usedCharacters] : [];
+  for (const id of other.usedCharacters) if (held.has(id) && !used.includes(id)) used.push(id);
+  state.usedCharacters = used;
+  return true;
 }
 
 export function saveState(state, storage) {
   if (storage === undefined) storage = defaultStorage();
   if (state.readOnly) { state.saveError = true; return false; }
   try {
+    const own = OWN.has(state) ? OWN.get(state) : ALL;
+    const claim = CLAIM.get(state);
+    if (own !== ALL && claim !== ALL && READ.has(state)) {
+      const now = storage.getItem(SAVE_KEY);
+      if (now && now !== READ.get(state) && !takeOthers(state, now, own, claim || new Set())) {
+        state.readOnly = true; // a newer version wrote it: leave it alone, as on loading a newer save
+        state.saveError = true;
+        return false;
+      }
+    }
     const { saveError, readOnly, ...rest } = state;
-    storage.setItem(SAVE_KEY, JSON.stringify({ ...rest, saveError: false }));
+    const txt = JSON.stringify({ ...rest, saveError: false });
+    storage.setItem(SAVE_KEY, txt);
+    READ.set(state, txt);
+    CLAIM.delete(state);
     state.saveError = false;
     return true;
   } catch {

@@ -10,7 +10,7 @@
 //   recordIsland(item, n)     the island a success is recorded on (english, number: the unit's own island, with the
 //                             time); without it a success is recorded on the island being played (hangul)
 //   onIslandStart(n), content, themes, curriculum, lines, voice, runners
-import { loadState, saveState, newIsland } from './save.js';
+import { loadState, saveState, claimSubjects, newIsland } from './save.js';
 import { adoptLegacy } from './legacy.js';
 import { recordSuccess, markVisit, islandProgress, isMastered, MASTERY_COUNT, MASTERY_TYPES } from './mastery.js';
 import { charHtml, DECORATIONS } from './characters.js';
@@ -82,8 +82,11 @@ export async function startIsland(subject, n) {
   // this subject's plays (its config's runners)
   const RUNNERS = Object.fromEntries(subject.runners.map(k => [k, ALL_RUNNERS[k]]));
   configureSpeech({ ...subject.voice, subject: subject.id });
-  const state = loadState();
-  if (adoptLegacy(state).length) saveState(state);
+  const state = loadState(undefined, { own: subject.id });
+  const got = adoptLegacy(state);
+  if (got.length) { claimSubjects(state, got); saveState(state); }
+  // back from the back/forward cache: read the save again rather than go on with an old copy
+  addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
   const H = state.subjects[subject.id];
   if (!H.characterId || subject.parent.needsSetup(state)) { location.href = 'sea.html'; return; }
   const key = String(n);

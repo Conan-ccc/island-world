@@ -2,7 +2,7 @@
 // storage, then one big picture button per subject goes to that subject's home (<subject>/sea.html).
 // The old games' saves come in here too (the same as on every subject page); the old keys are only read.
 // The offline copy of the assets starts here (no subject first).
-import { loadState, saveState } from './save.js';
+import { loadState, saveState, claimSubjects, SAVE_KEY } from './save.js';
 import { adoptLegacy } from './legacy.js';
 import { unlockSpeech } from './speech.js';
 import { unlockAudio } from './fx.js';
@@ -19,8 +19,12 @@ const PLAY_ICON = '<svg viewBox="0 0 100 100" width="160" height="160"><circle c
 const SCREEN = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#BDE8FF 0%,#E6F7FF 55%,#FFF5FA 100%)';
 
 export function startHub(app = document.getElementById('app')) {
-  const state = loadState();
-  if (adoptLegacy(state).length) saveState(state);
+  // the entrance works on no subject: it writes only the old saves it brings in
+  const state = loadState(undefined, { own: null });
+  const got = adoptLegacy(state);
+  if (got.length) { claimSubjects(state, got); saveState(state); }
+  addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
+  addEventListener('storage', e => { if (e.key === SAVE_KEY && !document.querySelector('.overlay')) location.reload(); });
   warmCache();
 
   function doors() {

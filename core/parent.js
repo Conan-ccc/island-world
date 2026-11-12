@@ -1,6 +1,6 @@
 // Parent gate and parent panel (text is fine here: adults only), one for every subject.
 // What a subject does its own way (its settings rows, words, "mark as cleared" rule, first-run check) is subject.parent.
-import { exportCode, importCode, saveState, clearSubject, CODE_PREFIX, SUBJECTS } from './save.js';
+import { exportCode, importCode, saveState, clearSubject, claimSubjects, CLAIM_ALL, CODE_PREFIX, SUBJECTS } from './save.js';
 import { decodeLegacyCode, mergeLegacy, hasProgress } from './legacy.js';
 import { isMastered } from './mastery.js';
 import { CHARACTERS } from './characters.js';
@@ -41,6 +41,14 @@ export function applyPastedCode(state, code, { confirmOverwrite = () => false } 
     }
     return r.ok ? { kind: 'legacy', subject, ok: true, state } : { kind: 'legacy', subject, ok: false, reason: r.reason };
   } catch (e) { return { kind: 'legacy', subject, ok: false, reason: why(e) }; }
+}
+
+// A pasted code that came in (applyPastedCode ok): an IW1: code replaces the state the page holds (the same object);
+// either way the page writes what came in on its next save, also for subjects that are not the page's own
+// (claimSubjects), instead of taking those subjects from what other pages wrote.
+export function takePasted(state, r) {
+  if (r.kind === 'full') { Object.keys(state).forEach(k => delete state[k]); Object.assign(state, r.state); claimSubjects(state, CLAIM_ALL); }
+  else claimSubjects(state, r.subject);
 }
 
 // Long-press the top-right 64px zone for 2s, then answer a simple addition.
@@ -154,7 +162,7 @@ export function openParentPanel(state, onChange, { subject, firstRun = false } =
   if (mark) mark.replaceWith(...P.rows(state, ctx));
   const ask = s => confirm(s === 'all' ? ASK_ALL : ASK_SUBJECT);
   // an IW1: code replaces the state the pages hold; an old code has already gone into it
-  const take = r => { if (r.kind === 'full') { Object.keys(state).forEach(k => delete state[k]); Object.assign(state, r.state); } };
+  const take = r => takePasted(state, r);
   ov.addEventListener('click', e => {
     const t = e.target;
     if (clicks.some(f => f(t))) return;

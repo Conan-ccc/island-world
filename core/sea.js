@@ -8,7 +8,7 @@
 //   islands, lines, themes.HOME_MUSIC, content.islandUnits, voice
 // The top-left button on the sea map goes to the entrance (../index.html); every other way out goes to an island page
 // in the same folder (island<n>.html), and an island page comes back here (sea.html, sea.html?evolve=<from>-<to>).
-import { loadState, saveState } from './save.js';
+import { loadState, saveState, claimSubjects, SAVE_KEY } from './save.js';
 import { adoptLegacy } from './legacy.js';
 import { charHtml, pickCharacter } from './characters.js';
 import { unlockSpeech, speak, setSpeechVolume, configureSpeech } from './speech.js';
@@ -37,9 +37,14 @@ export function startSea(subject) {
   warmCache(['assets/' + subject.id + '/']);
   const LINES = subject.lines;
   const { HOME_MUSIC } = subject.themes;
-  const state = loadState();
+  const state = loadState(undefined, { own: subject.id });
   // the old game's save (and the other old games' saves) come in once; the old keys are only read
-  if (adoptLegacy(state).length) saveState(state);
+  const got = adoptLegacy(state);
+  if (got.length) { claimSubjects(state, got); saveState(state); }
+  // another page (a tab, an island) wrote the save, or the browser brings this page back from its back/forward cache:
+  // read it again rather than go on with an old copy (not while the parent panel or another overlay is open)
+  addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
+  addEventListener('storage', e => { if (e.key === SAVE_KEY && !document.querySelector('.parent-panel, .overlay')) location.reload(); });
   const app = document.getElementById('app');
   const H = () => state.subjects[subject.id];
   const save = () => saveState(state);
