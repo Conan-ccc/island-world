@@ -1,0 +1,15 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>발음 확인</title><link rel="stylesheet" href="../core/ui.css">
+<script>
+  // the parent's pronunciation check of one subject: voice-check.html?subject=hangul|english (core/env.js reads it)
+  const subject = ['hangul', 'english'].find(s => s === new URLSearchParams(location.search).get('subject')) ?? null;
+  window.__ISLAND = { subject };
+</script>
+</head>
+<body>
+<script type="module">
+  const { subject } = window.__ISLAND;
+  if (subject) (await import(`../subjects/${subject}/voice-check.js`)).render(document);
+  else document.body.insertAdjacentHTML('beforeend', '<p style="padding:16px;font-size:15px">발음 확인은 한글 섬(?subject=hangul)과 영어 섬(?subject=english)에 있어요.</p>');
+</script>
+</body></html>

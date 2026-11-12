@@ -1,0 +1,46 @@
+// The entrance (for now; the world map comes later): the start tap unlocks the sound and asks the browser to keep the
+// storage, then one big picture button per subject goes to that subject's home (<subject>/sea.html).
+// The old games' saves come in here too (the same as on every subject page); the old keys are only read.
+// The offline copy of the assets starts here (no subject first).
+import { loadState, saveState } from './save.js';
+import { adoptLegacy } from './legacy.js';
+import { unlockSpeech } from './speech.js';
+import { unlockAudio } from './fx.js';
+import { siteUrl } from './env.js';
+import { warmCache } from './register-sw.js';
+
+export const DOORS = [
+  { id: 'hangul', name: '한글 섬' },
+  { id: 'english', name: '영어 섬' },
+  { id: 'number', name: '숫자 섬' },
+];
+
+const PLAY_ICON = '<svg viewBox="0 0 100 100" width="160" height="160"><circle cx="50" cy="52" r="44" fill="#E05A8C"/><circle cx="50" cy="48" r="44" fill="#FF8FB8"/><circle cx="50" cy="48" r="44" fill="none" stroke="#fff" stroke-width="4"/><path d="M41 30 L71 48 L41 66Z" fill="#fff"/></svg>';
+const SCREEN = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#BDE8FF 0%,#E6F7FF 55%,#FFF5FA 100%)';
+
+export function startHub(app = document.getElementById('app')) {
+  const state = loadState();
+  if (adoptLegacy(state).length) saveState(state);
+  warmCache();
+
+  function doors() {
+    app.innerHTML = `<div class="hub-doors" style="${SCREEN};gap:min(4vw,40px);flex-wrap:wrap">${DOORS.map(d => `
+      <button class="hub-door btn-pic" data-subject="${d.id}" aria-label="${d.name}" style="flex-direction:column;gap:10px;padding:18px;border-radius:36px">
+        <img src="${siteUrl(`icons/${d.id}/icon-512.png`)}" alt="" style="width:min(24vw,34vh);height:min(24vw,34vh);border-radius:28px;display:block;pointer-events:none">
+        <span style="font-size:30px;font-weight:800;color:#4A3A48">${d.name}</span>
+      </button>`).join('')}
+    </div>`;
+    for (const b of app.querySelectorAll('.hub-door')) b.addEventListener('click', () => { location.href = siteUrl(`${b.dataset.subject}/sea.html`); });
+  }
+
+  app.innerHTML = `<div style="${SCREEN}"><button class="hub-start" style="border:none;background:none;padding:0" aria-label="시작">${PLAY_ICON}</button></div>`;
+  app.querySelector('.hub-start').addEventListener('click', () => {
+    unlockSpeech(); unlockAudio();
+    navigator.storage?.persist?.().catch(() => {});
+    if (window.__swUpdateReady) { location.reload(); return; }
+    doors();
+  }, { once: true });
+  window.__hub = { state };
+}
+
+if (globalThis.document?.getElementById('app')) startHub();

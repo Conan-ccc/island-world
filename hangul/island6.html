@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>한글 섬 여행 -  낱말 섬</title>
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../icons/hangul/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="섬 나라">
+<meta name="theme-color" content="#FFC2D9">
+<script>window.__ISLAND = { subject: 'hangul' }</script>
+<link rel="stylesheet" href="../core/ui.css">
+</head>
+<body>
+<div id="app" style="position:fixed;inset:0;overflow:hidden;background:#8fd6f2"></div>
+<script type="module">
+  import subject from '../subjects/hangul/config.js';
+  import { startIsland } from '../core/island.js';
+  startIsland(subject, 6);
+</script>
+<script type="module" src="../core/register-sw.js"></script>
+</body>
+</html>
