@@ -1,0 +1,52 @@
+body { background: #f4f4de; color: #51465b; }
+#arcade { height: 100%; overflow: auto; padding: 22px 32px; background: radial-gradient(ellipse at 80% 0, #d6eee7, transparent 65%); background-size: cover; background-position: center; background-repeat: no-repeat; }
+.arc-header { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; }
+.arc-header h1 { flex: 1; font-size: 32px; margin: 0; }
+#arcade button, #arcade select { min-width: 96px; min-height: 96px; border: 3px solid #e2d8db; border-radius: 25px; background: #fffdf6; color: #51465b; font: inherit; font-size: 23px; font-weight: 700; padding: 12px 20px; cursor: pointer; }
+#arcade button:focus-visible { outline: 5px solid #8364a6; outline-offset: 3px; }
+#arcade button:disabled { opacity: .45; cursor: default; }
+#arcade button.selected { border-color: #9273b8; background: #f1e8fb; }
+.arc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px; }
+.arc-grid button { display: flex; align-items: center; flex-direction: column; justify-content: center; gap: 10px; }
+.arc-grid svg, .arc-grid .hero-picture { width: 110px; height: 110px; }
+.hero-picture { position: relative; display: inline-block; }
+.hero-picture svg, .hero-picture img { width: 100%; height: 100%; }
+.hero-picture img { position: absolute; inset: 0; object-fit: contain; }
+.arc-stages { grid-template-columns: repeat(10, minmax(96px, 1fr)); overflow-x: auto; }
+#arcade .arc-stages button { padding: 8px; font-size: 23px; }
+#arcade .sprout { background: #e8f3d8; } #arcade .tree { background: #dbeee9; } #arcade .star { background: #eee1f8; }
+.arc-subject { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; }
+.arc-next { padding: 20px; margin: 18px 0; background: #fff9e7; border-radius: 24px; font-size: 23px; }
+.arc-next progress { width: 100%; }
+.arc-result { text-align: center; max-width: 820px; margin: 30px auto; }
+.arc-result h1 { font-size: 48px; } .arc-result .medals { font-size: 70px; }
+.arc-result button { margin: 10px; } .arc-result svg { width: 150px; height: 150px; }
+#arcade:has(.arc-play) { padding: 12px 24px; overflow: hidden; }
+.arc-play { height: 100%; display: flex; flex-direction: column; align-items: stretch; }
+.arc-toolbar { display: flex; align-items: center; gap: 14px; height: 104px; flex-shrink: 0; }
+.arc-hearts { color: #bf5476; font-size: 28px; white-space: nowrap; }
+.arc-score { font-size: 26px; font-weight: 800; white-space: nowrap; }
+.arc-ask { flex: 1; display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 26px; font-weight: 800; margin: 0; }
+.arc-token { background: #ffe38a; color: #513665; border-radius: 18px; padding: 4px 20px; font-size: 44px; }
+.arc-token[hidden] { display: none; }
+progress { appearance: none; -webkit-appearance: none; border: 0; background: #f5e9db; border-radius: 20px; height: 16px; overflow: hidden; }
+progress::-webkit-progress-bar { background: #f5e9db; border-radius: 20px; }
+progress::-webkit-progress-value { background: #73c59b; border-radius: 20px; }
+progress::-moz-progress-bar { background: #73c59b; border-radius: 20px; }
+.arc-bars { position: absolute; top: 8px; left: 8%; right: 8%; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+.arc-bars progress { width: 100%; flex-shrink: 0; }
+.arc-path::-webkit-progress-value { background: #ef91b3; }
+.arc-path::-moz-progress-bar { background: #ef91b3; }
+.arc-result > svg, .arc-result > .hero-picture { width: 220px; height: 220px; }
+.arc-result > .hero-picture svg { width: 100%; height: 100%; }
+.arc-result-actions { display: flex; justify-content: center; align-items: center; }
+#arcade .arc-primary { min-height: 110px; min-width: 250px; background: #705294; color: #fff; border-color: #705294; font-size: 32px; }
+.arc-next-stage { order: -1; }
+.arc-canvas { display: block; width: 100%; height: 100%; object-fit: contain; touch-action: none; border-radius: 24px; }
+.arc-board { flex: 1; min-height: 0; position: relative; display: flex; justify-content: center; }
+.arc-board canvas { width: auto; max-width: 100%; aspect-ratio: 10 / 7; }
+.arc-guide { position: absolute; inset: 0; display: grid; place-content: center; background: #fff9e7ee; border-radius: 24px; text-align: center; font-size: 30px; padding: 24px; }
+.arc-guide span { font-size: 72px; } .arc-guide button { margin: 20px auto; }
+#turn { display: none; position: fixed; inset: 0; z-index: 1000; background: #e4f2eb; align-items: center; justify-content: center; flex-direction: column; gap: 30px; font-size: 36px; font-weight: bold; }
+#turn span { font-size: 130px; }
+@media (orientation: portrait) { #turn { display: flex; } }

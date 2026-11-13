@@ -15,6 +15,13 @@ const NEWER_CODE = '더 새 버전의 코드예요. 앱을 새로 고친 뒤 다
 const ASK_SUBJECT = '이 과목에는 이미 기록이 있어요. 옛 기록으로 바꿀까요?';
 const ASK_ALL = '지금 기록을 모두 이 코드의 기록으로 바꿀까요?';
 
+// Claim only an intentional switch change; ordinary island saves keep the stored value.
+export function setAllGames(state, enabled) {
+  if (state.readOnly || state.arcade.allGames === enabled) return;
+  claimSubjects(state, 'arcade');
+  state.arcade.allGames = enabled;
+}
+
 // the answer to the gate's sum (the button's value may come as text)
 export const checkSum = (a, b, answer) => Number(answer) === a + b;
 
@@ -138,6 +145,7 @@ export function openParentPanel(state, onChange, { subject, firstRun = false } =
       : state.saveError ? '<div class="pp-warn" style="background:#FFE3E3;color:#B00020;padding:10px;border-radius:12px;margin-top:12px">저장이 안 되고 있어요. 저장 공간을 확인하거나 백업 코드를 보관해 주세요.</div>' : ''}
     ${rowsAt('top')}<h3>${W.sound}</h3><input class="pp-vol" type="range" min="0" max="1" step="0.1" value="${g.volume}" style="width:100%">
     ${check('pp-music', g.music !== false, '배경음악 켜기')}${rowsAt('sound')}
+    <h3>놀이동산</h3>${check('pp-all-games', state.arcade.allGames, '게임 모두 열기')}
     ${firstRun ? '' : `<h3>진행 상황</h3>${progressHtml(state, subject)}
     ${state.readOnly ? '' : `<h3>백업</h3><div style="font-size:13px;color:#888">이 코드를 메모나 카톡에 보관해 두면, 아이패드를 바꾸거나 데이터가 지워져도 그대로 이어서 할 수 있어요.</div>
     <textarea class="pp-code" readonly style="width:100%;height:70px;font-size:12px;border-radius:10px;border:1px solid #ddd;padding:8px">${esc(exportCode(state))}</textarea>
@@ -155,6 +163,8 @@ export function openParentPanel(state, onChange, { subject, firstRun = false } =
     <div style="margin-top:24px;text-align:right"><button class="pp-save btn-pic" style="font-size:18px;background:${P.accent};padding:10px 26px">저장</button></div>
   </div>`;
   const $ = q => ov.querySelector(q);
+  $('.pp-all-games').disabled = !!state.readOnly;
+  const initialAllGames = state.arcade.allGames;
   // the subject's own rows go where the marker is; they hook into clicks (first) and into saving (false stops it)
   const clicks = [], savers = [];
   const ctx = { check, characterSelect, nodes, $, onClick: f => clicks.push(f), onSave: f => savers.push(f) };
@@ -204,6 +214,7 @@ export function openParentPanel(state, onChange, { subject, firstRun = false } =
       g.volume = Number($('.pp-vol').value);
       g.music = $('.pp-music').checked;
       for (const f of savers) if (f() === false) return;
+      if ($('.pp-all-games').checked !== initialAllGames) setAllGames(state, $('.pp-all-games').checked);
       onChange(state); ov.remove();
     }
   });

@@ -6,6 +6,7 @@ import { loadState, saveState, claimSubjects, SAVE_KEY } from './save.js';
 import { adoptLegacy } from './legacy.js';
 import { unlockSpeech } from './speech.js';
 import { unlockAudio } from './fx.js';
+import { countStars } from './stars.js';
 import { siteUrl } from './env.js';
 import { warmCache } from './register-sw.js';
 
@@ -33,7 +34,9 @@ export function startHub(app = document.getElementById('app')) {
         <img src="${siteUrl(`icons/${d.id}/icon-512.png`)}" alt="" style="width:min(24vw,34vh);height:min(24vw,34vh);border-radius:28px;display:block;pointer-events:none">
         <span style="font-size:30px;font-weight:800;color:#4A3A48">${d.name}</span>
       </button>`).join('')}
+      <button class="hub-arcade btn-pic" style="min-width:150px;min-height:110px;font-size:28px">놀이동산 <span class="star-jar">★ ${countStars(state)}</span></button>
     </div>`;
+    app.querySelector('.hub-arcade').addEventListener('click', () => { location.href = siteUrl('arcade/index.html'); });
     for (const b of app.querySelectorAll('.hub-door')) b.addEventListener('click', () => { location.href = siteUrl(`${b.dataset.subject}/sea.html`); });
   }
 
