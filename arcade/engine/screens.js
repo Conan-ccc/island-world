@@ -5,7 +5,7 @@ import { siteUrl } from '../../core/env.js';
 import { unlockAudio, playMusic, stopMusic, playSfx, setVolume, setMusic } from '../../core/fx.js';
 import { speak, unlockSpeech, setSpeechVolume, stopSpeech } from '../../core/speech.js';
 import { HEROES, fit } from '../heroes.js';
-import { GAME_STARS, syncArcade, gameOpen, canWelcome, welcome, nextHero, stageOpen, helpCard } from '../unlock.js';
+import { GAME_STARS, syncArcade, gameOpen, canWelcome, welcome, nextHero, stageOpen, helpCard, suggestGame, suggestStage } from '../unlock.js';
 import { pool, tierOf } from '../content.js';
 import { heroIcon, setPal, ART } from '../art.js';
 import { GAMES } from '../games/index.js';
@@ -15,17 +15,17 @@ import { startPlay } from './play.js';
 export function startArcade(root = document.getElementById('arcade')) {
   const state = loadState(undefined, { own: 'arcade' });
   warmCache(['assets/arcade/']);
-  let play = null, lastSession = null;
+  let play = null, lastSession = null, greeted = false;
   const failures = new Map();
   const hero = id => HEROES.find(h => h.id === id) ?? HEROES[0];
   const save = () => { saveState(state); return state.arcade; };
   if (syncArcade(state)) save();
   setPal(state); setVolume(state.settings.volume); setSpeechVolume(state.settings.volume); setMusic(state.settings.music);
   function sound() { unlockAudio(); unlockSpeech(); playMusic(); }
-  root.addEventListener('click', sound, { once: true });
+  root.addEventListener('click', sound, { once: true, capture: true });
   function stop() { play?.stop(); play = null; }
   function page(title, back) {
-    stop(); root.replaceChildren(); root.style.backgroundImage = '';
+    stop(); stopSpeech(); root.replaceChildren(); root.scrollTop = 0; root.style.backgroundImage = '';
     const header = document.createElement('header'); header.className = 'arc-header';
     button(header, '돌아가기', back, 'arc-back');
     const h = document.createElement('h1'); h.textContent = title; header.append(h);
@@ -56,49 +56,87 @@ export function startArcade(root = document.getElementById('arcade')) {
       playSfx('fanfare'); speak('새 친구가 왔어!'); button(scene, '함께 놀자', home, 'arc-welcome-done');
     }, 'arc-welcome');
     const grid = section(root, 'arc-grid');
+    const suggested = suggestGame(state);
     for (const game of GAMES) {
-      const open = gameOpen(state, game.meta.id);
-      const b = button(grid, game.meta.name + (open ? '' : ` · 별 ${GAME_STARS[game.meta.id]}개`), () => stages(game), 'arc-game');
-      b.dataset.game = game.meta.id; b.disabled = !open;
-      const icon = document.createElement('span'); icon.innerHTML = heroIcon('pal');
-      if (ART.icons[game.meta.id]) {
-        icon.className = 'hero-picture';
-        const img = document.createElement('img'); img.alt = ''; img.width = 110; img.height = 110;
-        img.onload = () => { icon.firstElementChild.style.visibility = 'hidden'; };
-        img.onerror = () => img.remove();
-        img.src = siteUrl(ART.icons[game.meta.id]); icon.append(img);
+      const id = game.meta.id, open = gameOpen(state, id);
+      const b = button(grid, game.meta.name, () => {
+        if (open) return stages(game);
+        b.classList.remove('arc-shake'); void b.offsetWidth; b.classList.add('arc-shake');
+        speak(`별 ${Math.max(1, GAME_STARS[id] - countStars(state))}개 더 모으면 열려!`);
+      }, 'arc-game' + (open ? '' : ' locked') + (suggested === id ? ' arc-suggest' : ''));
+      b.dataset.game = id;
+      if (!open) b.setAttribute('aria-disabled', 'true');
+      const picture = section(b, 'arc-game-picture'); picture.append(gameIcon(game)); b.prepend(picture);
+      if (!open) {
+        const lock = section(picture, 'arc-lock'); lock.textContent = '🔒';
+        const badge = section(b, 'arc-lock-badge'); badge.textContent = `★${GAME_STARS[id]}`;
       }
-      b.prepend(icon);
+      if (suggested === id) { const hand = section(picture, 'arc-hand'); hand.textContent = '👆'; hand.setAttribute('aria-hidden', 'true'); }
     }
+    if (!greeted) { greeted = true; speak('하고 싶은 놀이를 눌러봐!'); }
+  }
+  function gameIcon(game) {
+    const icon = document.createElement('span'); icon.className = 'hero-picture'; icon.innerHTML = heroIcon('pal');
+    if (ART.icons[game.meta.id]) {
+      const img = document.createElement('img'); img.alt = ''; img.width = 140; img.height = 140;
+      img.onload = () => { icon.firstElementChild.style.visibility = 'hidden'; };
+      img.onerror = () => img.remove();
+      img.src = siteUrl(ART.icons[game.meta.id]); icon.append(img);
+    }
+    return icon;
   }
   function stages(game) {
     if (!gameOpen(state, game.meta.id)) return home();
     page(game.meta.name, home);
-    const choices = section(root, 'arc-subject');
-    for (const [id, name] of Object.entries({ mix: '섞어서', hangul: '한글', english: '영어', number: '숫자' })) {
-      const b = button(choices, name, () => { state.arcade.subject = id; save(); stages(game); }, state.arcade.subject === id ? 'selected' : ''); b.dataset.subject = id;
+    root.querySelector('h1').prepend(gameIcon(game));
+    const background = ART.games[game.meta.id]?.background;
+    if (background) root.style.backgroundImage = `linear-gradient(#fffdf6df, #fffdf6df), url("${siteUrl(background)}")`;
+    const n = suggestStage(state, game.meta.id);
+    const start = button(root, '', () => begin(game, n), 'arc-play arc-primary arc-pulse');
+    start.innerHTML = `<span aria-hidden="true">▶</span><small>${n}판</small>`;
+    start.dataset.stage = n; start.setAttribute('aria-label', `${n}판 시작`);
+    const owned = HEROES.filter(h => h.id === 'pal' || state.arcade.heroes.owned.includes(h.id));
+    if (owned.length > 1) {
+      const row = section(root, 'arc-heroes');
+      for (const h of owned) {
+        const b = button(row, '', () => {
+          state.arcade.heroes.picked = h.id; save();
+          for (const item of row.children) {
+            const selected = item.dataset.hero === h.id; item.classList.toggle('selected', selected); item.setAttribute('aria-pressed', String(selected));
+          }
+          speak(`${h.name}랑 놀자!`);
+        }, 'arc-hero' + ((state.arcade.heroes.picked ?? 'pal') === h.id ? ' selected' : ''));
+        b.innerHTML = heroIcon(h.id) + `<small>${'♥'.repeat(fit(game, h.id))}</small>`;
+        b.dataset.hero = h.id; b.setAttribute('aria-label', h.name);
+        b.setAttribute('aria-pressed', String((state.arcade.heroes.picked ?? 'pal') === h.id));
+      }
     }
+    const choices = section(root, 'arc-subject');
+    for (const [id, symbol, name] of [['mix', '🎲', '섞어서'], ['hangul', '가', '한글'], ['english', 'A', '영어'], ['number', '1', '숫자']]) {
+      const b = button(choices, '', () => {
+        state.arcade.subject = id; save();
+        for (const item of choices.children) {
+          const selected = item.dataset.subject === id; item.classList.toggle('selected', selected); item.setAttribute('aria-pressed', String(selected));
+        }
+      }, state.arcade.subject === id ? 'selected' : '');
+      b.innerHTML = `<span>${symbol}</span><small>${name}</small>`; b.dataset.subject = id;
+      b.setAttribute('aria-pressed', String(state.arcade.subject === id));
+    }
+    const label = document.createElement('h2'); label.className = 'arc-other'; label.textContent = '다른 판'; root.append(label);
     const grid = section(root, 'arc-grid arc-stages');
     for (let n = 1; n <= 30; n++) {
-      const medals = state.arcade.games[game.meta.id]?.medals[n - 1] || 0;
-      const b = button(grid, `${n} ${'●'.repeat(medals)}`, () => friends(game, n), tierOf(n) + ' arc-stage');
-      b.dataset.stage = n; b.disabled = !stageOpen(state, game.meta.id, n); b.setAttribute('aria-label', `${n}단계 메달 ${medals}개`);
+      const medals = state.arcade.games[game.meta.id]?.medals[n - 1] || 0, open = stageOpen(state, game.meta.id, n);
+      const b = button(grid, open ? `${n} ${'●'.repeat(medals)}` : '🔒', () => {
+        if (open) begin(game, n); else speak('앞 판을 먼저 해 보자!');
+      }, tierOf(n) + ' arc-stage' + (open ? '' : ' locked'));
+      b.dataset.stage = n; if (!open) b.setAttribute('aria-disabled', 'true');
+      b.setAttribute('aria-label', `${n}단계 메달 ${medals}개`);
     }
-  }
-  function friends(game, n) {
-    if (!HEROES.some(h => h.id !== 'pal' && state.arcade.heroes.owned.includes(h.id))) return begin(game, n);
-    page('함께 놀 친구', () => stages(game));
-    const grid = section(root, 'arc-grid');
-    for (const h of HEROES.filter(h => h.id === 'pal' || state.arcade.heroes.owned.includes(h.id))) {
-      const b = button(grid, `${h.name} · ${fit(game, h.id) ? '♥'.repeat(fit(game, h.id)) : '여기서는 그냥 같이 놀아'}`, () => {
-        state.arcade.heroes.picked = h.id; save(); begin(game, n);
-      }, 'arc-hero' + ((state.arcade.heroes.picked ?? 'pal') === h.id ? ' selected' : ''));
-      const icon = document.createElement('span'); icon.innerHTML = heroIcon(h.id); b.prepend(icon); b.dataset.hero = h.id;
-    }
+    speak(`${game.meta.name}! 초록 단추를 누르면 시작해!`);
   }
   function begin(game, n) {
     if (!gameOpen(state, game.meta.id) || !stageOpen(state, game.meta.id, n)) return home();
-    stop();
+    stop(); root.style.backgroundImage = '';
     const picked = state.arcade.heroes.picked;
     const heroId = state.arcade.heroes.owned.includes(picked) ? picked : 'pal';
     const key = `guide:${game.meta.id}`;
@@ -119,7 +157,7 @@ export function startArcade(root = document.getElementById('arcade')) {
     if (clear) { const medals = section(box, 'medals'); medals.textContent = '🏅'.repeat(s.medals); playSfx('fanfare'); speak('해냈어!'); }
     const actions = section(box, 'arc-result-actions');
     button(actions, clear ? '한 번 더' : '다시 해볼까?', () => begin(game, n), 'arc-retry' + (clear ? '' : ' arc-primary'));
-    if (clear && n < 30) button(actions, '다음', () => friends(game, n + 1), 'arc-next-stage arc-primary');
+    if (clear && n < 30) button(actions, '다음', () => begin(game, n + 1), 'arc-next-stage arc-primary');
     if (!clear && failures.get(key) >= 2) {
       const card = helpCard(state, game);
       if (card) {

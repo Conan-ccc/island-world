@@ -8,7 +8,7 @@ import { speak, stopSpeech } from '../../core/speech.js';
 export function startPlay(root, game, stageNo, options) {
   const s = newSession(game, stageNo, options);
   preloadArt(game.meta.id, s.heroId);
-  root.innerHTML = `<section class="arc-play"><header class="arc-toolbar"><button class="arc-exit" aria-label="단계로">나가기</button><span class="arc-hearts"></span><p class="arc-ask"><span class="arc-goal"></span><strong class="arc-token" hidden></strong></p><span class="arc-score"></span><button class="arc-pause">쉬기</button></header><div class="arc-board"><canvas class="arc-canvas" width="1000" height="700" aria-label="놀이 판"></canvas><div class="arc-bars"><progress class="arc-progress" aria-label="목표까지"></progress><progress class="arc-path" aria-label="끝까지 남은 길" hidden></progress><progress class="arc-time" aria-label="남은 시간" hidden></progress></div></div></section>`;
+  root.innerHTML = `<section class="arc-playing"><header class="arc-toolbar"><button class="arc-exit" aria-label="단계로">나가기</button><span class="arc-hearts"></span><p class="arc-ask"><span class="arc-goal"></span><strong class="arc-token" hidden></strong></p><span class="arc-score"></span><button class="arc-pause">쉬기</button></header><div class="arc-board"><canvas class="arc-canvas" width="1000" height="700" aria-label="놀이 판"></canvas><div class="arc-bars"><progress class="arc-progress" aria-label="목표까지"></progress><progress class="arc-path" aria-label="끝까지 남은 길" hidden></progress><progress class="arc-time" aria-label="남은 시간" hidden></progress></div></div></section>`;
   const canvas = root.querySelector('canvas'), ctx = canvas.getContext('2d'), input = attachInput(canvas);
   const hearts = root.querySelector('.arc-hearts'), progress = root.querySelector('.arc-progress'), score = root.querySelector('.arc-score');
   const ask = root.querySelector('.arc-goal'), token = root.querySelector('.arc-token'), timer = root.querySelector('.arc-time'), path = root.querySelector('.arc-path');
@@ -67,9 +67,10 @@ export function startPlay(root, game, stageNo, options) {
     const guide = document.createElement('div'); guide.className = 'arc-guide';
     const hand = document.createElement('span'); hand.textContent = '☝';
     const how = document.createElement('p'); how.textContent = game.meta.how;
-    const button = document.createElement('button'); button.className = 'arc-guide-start'; button.textContent = '해볼게!';
-    button.onclick = () => { guiding = false; guide.remove(); options.onGuide(); speak(game.meta.how); syncPause(); };
+    const button = document.createElement('button'); button.className = 'arc-guide-start arc-primary arc-pulse'; button.textContent = '해볼게!';
+    button.onclick = () => { guiding = false; guide.remove(); options.onGuide(); syncPause(); };
     guide.append(hand, how, button); root.querySelector('.arc-board').append(guide);
+    speak(game.meta.how);
   }
   syncPause(); draw();
   if (!guiding && s.g.question?.say) speak(s.g.question.say);

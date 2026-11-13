@@ -55,3 +55,19 @@ export function helpCard(state, game) {
     .sort((a, b) => fit(game, b.id) - fit(game, a.id) || a.stars - b.stars)[0];
   return earn ? { kind: 'earn', hero: earn.id, need: Math.max(0, earn.stars - countStars(state)) } : null;
 }
+
+// Recommendations only read the existing save; they never unlock or record anything.
+export function suggestGame(state) {
+  return Object.keys(GAME_STARS).find(id => gameOpen(state, id) && !(state.arcade.games[id]?.medals[0] > 0)) ?? null;
+}
+
+export function suggestStage(state, gameId) {
+  if (!gameOpen(state, gameId)) return null;
+  let highest = null;
+  for (let n = 1; n <= 30; n++) {
+    if (!stageOpen(state, gameId, n)) continue;
+    highest = n;
+    if (!(state.arcade.games[gameId]?.medals[n - 1] > 0)) return n;
+  }
+  return highest;
+}
