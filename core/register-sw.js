@@ -6,6 +6,7 @@
 // download that was cut off goes on). When a new version takes over while the page is open, the page's last warm goes
 // to the new worker too (it starts with an empty cache of its own).
 import { siteUrl } from './env.js';
+import './touch-guard.js'; // every page loads this file, so the zoom guard rides along
 
 let ready = null;
 let asked = null; // the last warm this page sent: { prefer }
