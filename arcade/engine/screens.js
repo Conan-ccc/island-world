@@ -73,6 +73,7 @@ export function startArcade(root = document.getElementById('arcade')) {
       }
       if (suggested === id) { const hand = section(picture, 'arc-hand'); hand.textContent = '👆'; hand.setAttribute('aria-hidden', 'true'); }
     }
+    root.querySelector('.arc-suggest')?.scrollIntoView({ block: 'nearest' });
     if (!greeted) { greeted = true; speak('하고 싶은 놀이를 눌러봐!'); }
   }
   function gameIcon(game) {

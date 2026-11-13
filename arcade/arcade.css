@@ -78,7 +78,7 @@ progress::-moz-progress-bar { background: #73c59b; border-radius: 20px; }
 #arcade .arc-guide-start { min-height: 120px; min-width: 320px; }
 .arc-shake { animation: arc-shake .35s ease-in-out; }
 @keyframes arc-bounce { 50% { transform: translateY(-12px); } }
-@keyframes arc-pulse { 50% { transform: scale(1.035); } }
+@keyframes arc-pulse { 50% { filter: brightness(1.15); } }
 @keyframes arc-shake { 25%, 75% { transform: translateX(-5px); } 50% { transform: translateX(5px); } }
 @media (prefers-reduced-motion: reduce) {
   .arc-hand, .arc-pulse, .arc-shake { animation: none; }

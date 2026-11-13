@@ -1,9 +1,10 @@
 import { countStars } from '../core/stars.js';
 import { HEROES, fit } from './heroes.js';
 
-export const GAME_STARS = Object.freeze({ run: 0, float: 0, stack: 0, paddle: 40, aim: 90,
-  echo: 160, fish: 250, beat: 360, toss: 480, trace: 620, cups: 800, lane: 1000,
-  swing: 1200, slice: 1450, chase: 1700, signal: 2000, rocket: 2300, curl: 2600, wheel: 3000, tree: 3400 });
+export const GAME_STARS = Object.freeze({ run: 0, float: 0, stack: 0, pour: 30, paddle: 40, light: 75, aim: 90, pinball: 140, echo: 160, cross: 225,
+  fish: 250, herd: 330, beat: 360, train: 450, toss: 480, balance: 590, trace: 620, tilt: 760, cups: 800, pipe: 950,
+  lane: 1000, draw: 1150, swing: 1200, jelly: 1320, slice: 1450, bowl: 1580, chase: 1700, garden: 1850, signal: 2000, whirl: 2150,
+  rocket: 2300, row: 2450, curl: 2600, seesaw: 2800, wheel: 3000, sling: 3200, tree: 3400, switch: 3700, march: 4000, slide: 4300 });
 export const threshold = base => base;
 
 // Call after loadState/migrate. These functions mutate only the arcade slice and never save.
