@@ -27,7 +27,28 @@ export function tapState(state, type, e, now, { slop = 40, gap = 120, multi = fa
   return { state: next, fire };
 }
 
+// A pointer action may replace its target before Chromium dispatches click.
+export function suppressClick(action, sequence, detail, now) {
+  return !!action && detail !== 0 && action.sequence === sequence && now - action.at >= 0 && now - action.at <= 1000;
+}
+
+const documents = new WeakMap();
+function clickGuard(doc) {
+  if (!doc) return null;
+  if (documents.has(doc)) return documents.get(doc);
+  const guard = { sequence: 0, action: null };
+  documents.set(doc, guard);
+  doc.addEventListener('pointerdown', () => { guard.sequence++; }, true);
+  doc.addEventListener('click', e => {
+    if (!suppressClick(guard.action, guard.sequence, e.detail, performance.now())) return;
+    guard.action = null;
+    e.preventDefault(); e.stopImmediatePropagation();
+  }, true);
+  return guard;
+}
+
 export function onTap(el, handler, opts = {}) {
+  const guard = clickGuard(el.ownerDocument);
   let state = {}, finished = false;
   const listeners = [];
   const listen = (name, type) => {
@@ -45,6 +66,7 @@ export function onTap(el, handler, opts = {}) {
       }
       el.classList.toggle('pressed', !!state.pressed);
       if (result.fire) {
+        if (type === 'up' && guard) guard.action = { sequence: guard.sequence, at: now };
         if (opts.once) finished = true;
         handler(e);
       }

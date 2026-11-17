@@ -29,6 +29,12 @@ export function createTracer(container, key, opts = {}) {
   container.appendChild(svg);
 
   let idx = 0, pts = null, pid = null, finished = false, fails = 0;
+  let inverse = null, viewW = 0, viewH = 0, frame = null, inkD = '';
+  const measure = () => {
+    inverse = svg.getScreenCTM()?.inverse();
+    viewW = window.innerWidth; viewH = window.innerHeight;
+  };
+  const cancelDraw = () => { if (frame !== null) cancelAnimationFrame(frame); frame = null; };
   const drawn = p => { let s = 0; for (let i = 1; i < p.length; i++) s += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); return s; };
   const place = () => {
     if (idx >= strokes.length) { dot.style.display = 'none'; return; }
@@ -49,26 +55,31 @@ export function createTracer(container, key, opts = {}) {
   };
 
   const toLocal = e => {
-    const m = svg.getScreenCTM();
-    if (!m) return [0, 0];
-    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+    if (viewW !== window.innerWidth || viewH !== window.innerHeight) measure();
+    if (!inverse) return [0, 0];
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(inverse);
     return [p.x, p.y];
   };
   const down = e => {
     if (finished || pid !== null) return;
+    measure();
     pid = e.pointerId; pts = [toLocal(e)];
     try { svg.setPointerCapture(pid); } catch { /* ignore */ }
-    ink.setAttribute('d', d(pts));
+    inkD = d(pts);
+    ink.setAttribute('d', inkD);
     e.preventDefault();
   };
   const move = e => {
     if (e.pointerId !== pid) return;
-    pts.push(toLocal(e));
-    ink.setAttribute('d', d(pts));
+    const p = toLocal(e);
+    pts.push(p);
+    inkD += ' L' + p[0].toFixed(1) + ' ' + p[1].toFixed(1);
+    if (frame === null) frame = requestAnimationFrame(() => { frame = null; ink.setAttribute('d', inkD); });
   };
   const up = e => {
     if (e.pointerId !== pid) return;
     pid = null;
+    cancelDraw();
     // every miss on the same stroke makes it easier; the fourth try counts as long as something was drawn
     const res = matchStroke(pts, strokes[idx], tol * (1 + 0.3 * Math.min(fails, 3)));
     const helped = !res.ok && fails >= 3 && drawn(pts) >= 12;
@@ -93,6 +104,6 @@ export function createTracer(container, key, opts = {}) {
   svg.addEventListener('pointerdown', down);
   svg.addEventListener('pointermove', move);
   svg.addEventListener('pointerup', up);
-  svg.addEventListener('pointercancel', e => { if (e.pointerId !== pid) return; pid = null; pts = null; ink.setAttribute('d', ''); });
-  return { destroy() { svg.remove(); } };
+  svg.addEventListener('pointercancel', e => { if (e.pointerId !== pid) return; cancelDraw(); pid = null; pts = null; ink.setAttribute('d', ''); });
+  return { destroy() { cancelDraw(); svg.remove(); } };
 }

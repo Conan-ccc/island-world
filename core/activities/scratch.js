@@ -46,7 +46,9 @@ export async function run(ctx, { rounds }) {
     await new Promise(done => {
       const points = new Map();
       let finished = false, lastSfx = 0;
-      const pt = e => { const b = cv.getBoundingClientRect(); return [((e.clientX - b.left) / b.width) * SIZE, ((e.clientY - b.top) / b.height) * SIZE]; };
+      let bounds, viewW, viewH;
+      const measure = () => { bounds = cv.getBoundingClientRect(); viewW = window.innerWidth; viewH = window.innerHeight; };
+      const pt = e => { if (viewW !== window.innerWidth || viewH !== window.innerHeight) measure(); const b = bounds; return [((e.clientX - b.left) / b.width) * SIZE, ((e.clientY - b.top) / b.height) * SIZE]; };
       const mark = (x, y) => {
         for (const [dx, dy] of [[0, 0], [-30, 0], [30, 0], [0, -30], [0, 30]]) {
           const cx = Math.floor(((x + dx) / SIZE) * GRID), cy = Math.floor(((y + dy) / SIZE) * GRID);
@@ -65,7 +67,7 @@ export async function run(ctx, { rounds }) {
         if (now - lastSfx > 260) { lastSfx = now; ctx.sfx('tap'); }
         if (seen.size >= GRID * GRID * CLEAR_AT) { finished = true; done(); }
       };
-      cv.addEventListener('pointerdown', e => { try { cv.setPointerCapture(e.pointerId); } catch { /* ignore */ } points.set(e.pointerId, null); rub(e); e.preventDefault(); });
+      cv.addEventListener('pointerdown', e => { measure(); try { cv.setPointerCapture(e.pointerId); } catch { /* ignore */ } points.set(e.pointerId, null); rub(e); e.preventDefault(); });
       cv.addEventListener('pointermove', e => { if (points.has(e.pointerId)) rub(e); });
       for (const ev of ['pointerup', 'pointercancel']) cv.addEventListener(ev, e => { points.delete(e.pointerId); });
     });

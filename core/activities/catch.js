@@ -19,13 +19,17 @@ export async function run(ctx, { rounds }) {
   const basket = el('div', 'position:absolute;left:50%;bottom:2%;width:min(24vw,32vh);translate:-50% 0;z-index:6;pointer-events:none;transition:left .12s linear', `<img class="picimg" src="${skin.target ? asset(skin.target) : picUrl('basket')}" alt="">`, 'catcher');
   ctx.stage.appendChild(basket);
   // the basket follows the finger anywhere on the screen (touch, hold or slide)
+  let bounds, viewW, viewH;
+  const measure = () => { bounds = field.getBoundingClientRect(); viewW = window.innerWidth; viewH = window.innerHeight; };
   const follow = e => {
-    const r = field.getBoundingClientRect();
+    if (viewW !== window.innerWidth || viewH !== window.innerHeight) measure();
+    const r = bounds;
     basket.style.left = Math.max(10, Math.min(90, ((e.clientX - r.left) / r.width) * 100)) + '%';
   };
   const fingers = new Map();
   const first = () => fingers.keys().next().value;
   field.addEventListener('pointerdown', e => {
+    measure();
     fingers.set(e.pointerId, e);
     try { field.setPointerCapture(e.pointerId); } catch { /* synthetic input */ }
     if (first() === e.pointerId) follow(e);
