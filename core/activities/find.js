@@ -1,3 +1,4 @@
+import { onTap } from '../tap.js';
 // 찾기: tap every card that shows what you heard (and see on the board)
 import { scene, shuffle, at, el, glow, unglow, wiggle, buddy, wait, center, ask, praise, progress, asset } from './common.js';
 
@@ -34,7 +35,7 @@ export async function run(ctx, { target, unit = target, decoys, count = 5, show,
   const tick = progress(ctx, count);
   let left = count, wrong = 0;
   await new Promise(done => {
-    for (const c of cards) c.addEventListener('click', () => {
+    for (const c of cards) onTap(c, () => {
       if (c.dataset.found) return;
       if (c.dataset.text === target) {
         c.dataset.found = '1';

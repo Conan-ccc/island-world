@@ -1,3 +1,4 @@
+import { onTap } from './tap.js';
 // Balloon party: a few seconds of popping balloons after a play is finished (no question, just fun)
 const COLORS = [['#FFC1D6', '#FF6FA5'], ['#BFE3FF', '#5EA8F2'], ['#FFF0B0', '#F5C542'], ['#CFF5C8', '#5DBB6A'], ['#E2D5FF', '#9B7BEA'], ['#FFD9B8', '#FF9A4D']];
 
@@ -35,14 +36,14 @@ export function balloonParty({ sfx, burst, characterHtml = '', count = 10, ms = 
       ], { duration: 4200 + Math.random() * 1400, delay: i * 260, easing: 'linear', fill: 'forwards' });
       const gone = () => { if (b.isConnected) { b.remove(); left -= 1; if (left <= 0) end(); } };
       anim.onfinish = gone;
-      b.addEventListener('pointerdown', e => {
+      onTap(b, e => {
         e.preventDefault();
         if (!b.isConnected) return;
         const r = b.getBoundingClientRect();
         burst?.(r.left + r.width / 2, r.top + r.height / 2, i % 2 ? 'hearts' : 'stars');
         sfx?.('pop');
         gone();
-      });
+      }, { gap: 0 });
     }
   });
 }

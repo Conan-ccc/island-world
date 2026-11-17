@@ -143,6 +143,7 @@ function parentRows(state, ctx) {
 
 export const subject = {
   id: 'english',
+  world: { id: 'autumn', accent: '#FF8A3C', accentSoft: '#FFB36B', drift: 'leaf' },
   title: '영어 섬 여행',
   themeColor: '#7FD8C4',
   islands: { available: [1, 2, 3, 4, 5, 6, 7, 8], count: 8 },

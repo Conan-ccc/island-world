@@ -1,3 +1,4 @@
+import { onTap } from '../tap.js';
 // 쓱쓱 문지르기: rub the sparkly fog off a card to see what is hidden (a picture, a number of things), then tap the answer.
 // The subject's look (ctx.subject.look.scratch) gives: picture(r) (the card's inside), button(t, options) -> { style, html }
 // (an answer button), and optionally afterRub(r) (what is said once the card is rubbed clean).
@@ -43,7 +44,8 @@ export async function run(ctx, { rounds }) {
     const seen = new Set();
     ask(ctx, ctx.speakLines.scratch, null);
     await new Promise(done => {
-      let lastPt = null, finished = false, lastSfx = 0;
+      const points = new Map();
+      let finished = false, lastSfx = 0;
       const pt = e => { const b = cv.getBoundingClientRect(); return [((e.clientX - b.left) / b.width) * SIZE, ((e.clientY - b.top) / b.height) * SIZE]; };
       const mark = (x, y) => {
         for (const [dx, dy] of [[0, 0], [-30, 0], [30, 0], [0, -30], [0, 30]]) {
@@ -53,19 +55,19 @@ export async function run(ctx, { rounds }) {
       };
       const rub = e => {
         if (finished) return;
-        const p = pt(e);
+        const p = pt(e), lastPt = points.get(e.pointerId);
         g.beginPath(); g.moveTo(...(lastPt || p)); g.lineTo(p[0] + 0.01, p[1] + 0.01); g.stroke();
         // long quick strokes skip cells: walk the line
         const from = lastPt || p, steps = Math.max(1, Math.ceil(Math.hypot(p[0] - from[0], p[1] - from[1]) / 30));
         for (let i = 1; i <= steps; i++) mark(from[0] + ((p[0] - from[0]) * i) / steps, from[1] + ((p[1] - from[1]) * i) / steps);
-        lastPt = p;
+        points.set(e.pointerId, p);
         const now = performance.now();
         if (now - lastSfx > 260) { lastSfx = now; ctx.sfx('tap'); }
         if (seen.size >= GRID * GRID * CLEAR_AT) { finished = true; done(); }
       };
-      cv.addEventListener('pointerdown', e => { try { cv.setPointerCapture(e.pointerId); } catch { /* ignore */ } lastPt = null; rub(e); e.preventDefault(); });
-      cv.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse' || e.buttons) rub(e); });
-      for (const ev of ['pointerup', 'pointercancel']) cv.addEventListener(ev, () => { lastPt = null; });
+      cv.addEventListener('pointerdown', e => { try { cv.setPointerCapture(e.pointerId); } catch { /* ignore */ } points.set(e.pointerId, null); rub(e); e.preventDefault(); });
+      cv.addEventListener('pointermove', e => { if (points.has(e.pointerId)) rub(e); });
+      for (const ev of ['pointerup', 'pointercancel']) cv.addEventListener(ev, e => { points.delete(e.pointerId); });
     });
     cv.style.opacity = '0'; cv.style.pointerEvents = 'none';
     cheer(ctx, card);
@@ -85,7 +87,7 @@ export async function run(ctx, { rounds }) {
     ask(ctx, r.prompt, target);
     let wrong = 0, solved = false;
     await new Promise(done => {
-      for (const b of btns) b.addEventListener('click', () => {
+      for (const b of btns) onTap(b, () => {
         if (solved) return;
         if (b === target) { solved = true; done(); return; }
         wiggle(b); ctx.sfx('boing'); ctx.speak(T.say(b.dataset.text));

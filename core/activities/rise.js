@@ -1,3 +1,4 @@
+import { onTap } from '../tap.js';
 // 둥실둥실 잡기: tokens float up or fall down; tap the ones that match what you heard
 import { scene, shuffle, el, buddy, wait, ask, praise, progress, asset, center, wiggle, glow } from './common.js';
 
@@ -43,7 +44,7 @@ export async function run(ctx, { rounds }) {
       ], { duration: dur, easing: 'linear' });
       anim.onfinish = () => it.remove();
       if (isTarget) lastTarget = it;
-      it.addEventListener('pointerdown', () => {
+      onTap(it, () => {
         if (it.dataset.done || !alive || got >= r.need) return;
         if (it.dataset.text === r.target) {
           it.dataset.done = '1'; anim.pause();

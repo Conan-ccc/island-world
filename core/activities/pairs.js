@@ -1,3 +1,4 @@
+import { onTap } from '../tap.js';
 // 짝 맞추기: flip two cards; the two sides of a pair (a picture and its word or first letter, things and their numeral) match (memory game).
 // The subject's look (ctx.subject.look.pairs) gives face(f, p, side, spec) (draws side 'a' or 'b' of pair p on the card face f)
 // and optionally mark(card, c) (data on the card), gridClass, cardClass, setsPrompt (the prompt is repeated when the child is idle).
@@ -37,7 +38,7 @@ export async function run(ctx, spec) {
   await wait(500);
   let first = null, busy = false, left = pairs.length;
   await new Promise(done => {
-    for (const x of faces) x.card.addEventListener('click', async () => {
+    for (const x of faces) onTap(x.card, async () => {
       if (busy || x.open || x.done) return;
       x.open = true; x.inner.style.transform = 'rotateY(180deg)'; ctx.sfx('tap');
       const said = x.c.side === 'a' ? x.c.p.sayA : x.c.p.say;

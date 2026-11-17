@@ -36,6 +36,38 @@ input, textarea, select { -webkit-user-select: text; user-select: text; font: in
 .stone.glow, .choice.glow { animation: glow 1s ease-in-out infinite, pulse 1s ease-in-out infinite; }
 .char svg { overflow: visible; width: 100%; height: auto; display: block; }
 .overlay { position: fixed; inset: 0; z-index: 100; }
+img { -webkit-user-drag: none; }
+.overlay.stage { --bottom-guard: max(env(safe-area-inset-bottom), 3.5vh); top: calc(-1 * var(--bottom-guard)); bottom: var(--bottom-guard); }
+/* Translate the full-height play area: shrinking it changes falling-item timing. */
+.overlay.stage .board { top: calc(3% + var(--bottom-guard)); }
+.overlay.stage .rounds { margin-top: var(--bottom-guard); }
+.overlay.stage .back-btn { margin-top: var(--bottom-guard); }
+.overlay.stage::after { content: ''; position: fixed; left: 0; right: 0; bottom: 0; height: max(env(safe-area-inset-bottom), 3.5vh); background: linear-gradient(#fffaf0, #f2e6d4); border-radius: 24px 24px 0 0; box-shadow: 0 -3px 12px #bba98622; z-index: 100; }
+.pressed { scale: .96; filter: brightness(1.15); }
+.imap, .hmap, .overlay.stage, .hub-doors, .hub-start, .start-btn, .btn-pic, .unit { touch-action: none; }
+/* Transparent hit area only: visual button sizes and layout stay unchanged. */
+.btn-pic, .unit { position: relative; }
+.btn-pic::after, .unit::after, .thing::after {
+  content: ''; position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+  width: max(100%, 72px); height: max(100%, 72px);
+}
+.zone { border: 5px solid #fff; background: rgba(255,255,255,.10); box-shadow: 0 0 16px rgba(255,255,255,.85); touch-action: none; }
+/* Keep whole zones on screen and reserve space above the island for its mission bar. */
+.imap { width: min(100vw, calc((100vh - 130px) * 1.6)) !important; height: min(62.5vw, calc(100vh - 130px)) !important; top: calc(50% + 65px) !important; overflow: visible !important; }
+.hmap { width: min(100vw, 160vh) !important; height: min(62.5vw, 100vh) !important; overflow: visible !important; }
+.imap.pressed, .hmap.pressed { scale: none; filter: none; }
+.zone::before { content: ''; position: absolute; inset: -5px; border: 5px solid #fff; border-radius: 50%; pointer-events: none; }
+.zone.unfinished::before { animation: zone-breathe 2.4s ease-in-out infinite; }
+.zone.done { border-width: 3px; }
+.zone.done::before { display: none; }
+.zone.pressed, .zone.picked { scale: 1.04; background: rgba(255,220,70,.55); box-shadow: 0 0 24px #ffe26d; filter: none; }
+.zone .arrow { font-size: 58px; line-height: 1; z-index: 6; }
+
+.zone .arrow[style*="top:-48px"] { rotate: 180deg; }
+@keyframes zone-breathe { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .imap *, .hmap *, .home-char * { animation: none !important; transition: none !important; }
+}
 
 /* ---- v2 look ---- */
 .charbox { position: relative; width: 100%; }
@@ -63,8 +95,6 @@ input, textarea, select { -webkit-user-select: text; user-select: text; font: in
 .slot2.next { border-color: #FF6FA5; animation: glow 1.2s ease-in-out infinite; }
 .picimg { width: 100%; height: auto; display: block; filter: drop-shadow(0 8px 8px rgba(0,0,0,.18)); -webkit-user-drag: none; pointer-events: none; }
 textarea, input { font-size: 16px !important; }
-.ring { position: absolute; inset: 18%; border-radius: 50%; border: 4px solid rgba(255,255,255,.9); box-shadow: 0 0 18px rgba(255,236,150,.9); animation: ring 1.8s ease-out infinite; pointer-events: none; }
-@keyframes ring { 0% { transform: scale(.6); opacity: .95; } 100% { transform: scale(1.25); opacity: 0; } }
 
 /* numbers */
 .tok-num { font-family: "Arial Rounded MT Bold", "Nunito", -apple-system, "Apple SD Gothic Neo", system-ui, sans-serif; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -94,3 +124,179 @@ textarea, input { font-size: 16px !important; }
 .board .bup { font-size: .55em; color: #C9A8D6; margin-right: .12em; }
 .board .bword.tok-letter { color: #8a7a88; font-size: min(9vh, 7vw); }
 .jblock.tok-letter { font-family: "Island Letters", sans-serif; }
+
+/* Subject worlds: presentation only, no changes to play cards or questions. */
+body { --accent: #FF6FA5; --accent-soft: #FF8FB1; --drift-a: #ffd0e1; --drift-b: #ffe0eb; --drift-c: #ffbcd4; }
+body[data-drift="leaf"] { --drift-a: #ed8a3d; --drift-b: #d95a39; --drift-c: #f4c650; }
+body[data-drift="snow"] { --drift-a: #fff; --drift-b: #fff; --drift-c: #fff; }
+#app::before { content: ''; position: fixed; inset: -20px; background: var(--map-image) center/cover; filter: blur(14px) brightness(1.08); pointer-events: none; }
+.imap > .scene-bg, .hmap > .scene-bg { mask-image: linear-gradient(transparent, #000 5%, #000 95%, transparent), linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent); -webkit-mask-image: linear-gradient(transparent, #000 5%, #000 95%, transparent), linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent); -webkit-mask-composite: source-in; mask-composite: intersect; }
+/* Map coordinates refer to the unscaled artwork, so only map backgrounds stay still. */
+.imap > .scene-bg, .hmap > .scene-bg { inset: 0; animation: none; transform: none; }
+.imap .zone, .hmap .zone { z-index: 3; }
+.imap .place-badge circle[fill="#FF6FA5"] { fill: var(--accent); }
+.hmap .island > div:last-child > div { color: var(--accent) !important; }
+.zone.unfinished::before { box-shadow: 0 0 12px var(--accent-soft); }
+.zone .arrow { text-shadow: 0 0 9px var(--accent-soft); }
+body[data-world="snow"] .zone { outline: 2px solid var(--accent); box-shadow: 0 0 12px #2469a588; }
+/* Fourteen CSS pieces in two groups: no extra DOM, images, random calls or hit targets. */
+.imap::before, .imap::after, .hmap::before, .hmap::after,
+body[data-world] #app > div:has(> .start-btn)::before,
+body[data-world] #app > div:has(> .start-btn)::after {
+  content: ''; position: absolute; left: 0; top: -12%; width: 11px; height: 16px;
+  border-radius: 80% 10% 70% 20%; background: var(--drift-a); pointer-events: none; z-index: 1;
+  box-shadow: 12vw -9vh var(--drift-b), 27vw 9vh var(--drift-a), 41vw -26vh var(--drift-c), 56vw 17vh var(--drift-a), 73vw -19vh var(--drift-b), 88vw 4vh var(--drift-c);
+  animation: world-fall 24s linear infinite; opacity: .75;
+}
+.imap::after, .hmap::after, body[data-world] #app > div:has(> .start-btn)::after { left: 5%; animation-delay: -12s; animation-duration: 29s; }
+body[data-drift="snow"] .imap::before, body[data-drift="snow"] .imap::after,
+body[data-drift="snow"] .hmap::before, body[data-drift="snow"] .hmap::after,
+body[data-drift="snow"] #app > div:has(> .start-btn)::before,
+body[data-drift="snow"] #app > div:has(> .start-btn)::after { width: 7px; height: 7px; border-radius: 50%; }
+body[data-world] .start-btn { position: relative; z-index: 3; }
+@keyframes world-fall {
+  0% { transform: translate(0, -20vh) rotate(-12deg); opacity: 0; }
+  12% { opacity: .75; }
+  45% { transform: translate(18px, 43vh) rotate(9deg); }
+  85% { opacity: .75; }
+  100% { transform: translate(-12px, 115vh) rotate(-8deg); opacity: 0; }
+}
+.overlay.stage .scene-bg::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
+body[data-world="autumn"] .overlay.stage .scene-bg::after { background: linear-gradient(#ec9e4540, #ec9e4500 35%); }
+body[data-world="snow"] .overlay.stage .scene-bg::after { background: linear-gradient(#ffffff40, #ffffff00 35%); }
+body[data-world="autumn"] .overlay.stage::after { background: linear-gradient(#fff7e8, #f4dfbf); }
+body[data-world="snow"] .overlay.stage::after { background: linear-gradient(#fff, #e3eff6); }
+@media (prefers-reduced-motion: reduce) {
+  .imap::before, .imap::after, .hmap::before, .hmap::after,
+  body[data-world] #app > div:has(> .start-btn)::before,
+  body[data-world] #app > div:has(> .start-btn)::after { display: none; }
+}
+
+body[data-world]:not([data-world="spring"]) .start-btn stop[offset="1"] { stop-color: var(--accent); }
+body[data-world]:not([data-world="spring"]) .start-btn stop[offset="0"] { stop-color: var(--accent-soft); }
+
+/* ---- Simple sticker UI (0.14.0): paint only, keep the DOM and hit boxes. ---- */
+:root {
+  /* Most frequent opaque dark-brown pixel in the 13 heroes/*-idle.webp images. */
+  --ink: #2a1509;
+  --sticker-paper: #fffdf6;
+  --sticker-text: #51465b;
+}
+/* Do not restyle the arcade or the adult panels, including their shared buttons. */
+:where(.btn-pic, .card, .pic-card, .board, .choice, .choice-tray > button,
+    .stone, .jblock, .slot2, .bubble, .plate, .thing, .seq-box, .qgrid.ten,
+    .count-area, .scratch-card, .tracepad, .mission, .rounds):not(:where(.parent-panel *, .parent-gate *, #arcade *)) {
+  outline: 3px solid var(--ink);
+  outline-offset: 0;
+  border-color: transparent !important;
+  border-radius: 26px !important;
+  background: var(--sticker-paper) !important;
+  color: var(--sticker-text) !important;
+  box-shadow: 0 5px 0 var(--ink), inset 0 3px 0 #fff !important;
+  text-shadow: none !important;
+}
+/* Keep existing border widths: an outline adds no padding or line wrapping. */
+:is(.board, .mission, .rounds, .count-area, .qgrid.ten, .slot2) {
+  box-shadow: 0 3px 0 var(--ink) !important;
+}
+.stone:not(.pic) { border-radius: 50% !important; background: #ffe7ae !important; }
+.plate { border-radius: 50% / 46% !important; }
+.jblock { background: var(--c1, #8ec5ff) !important; }
+.jblock.v { background: #ffb8d9 !important; }
+.jblock.s { background: #ffe7a8 !important; }
+.slot2, .seq-box.hole { outline-style: dashed; background: #fff1ce !important; }
+.slot2:has(> .jblock) { outline: none; background: transparent !important; box-shadow: none !important; }
+.slot2.next { outline: 4px dashed var(--accent); outline-offset: 3px; }
+.thing:not(.ten) { border-radius: 22px !important; }
+.count-badge {
+  background: #ffda65; color: var(--sticker-text); border-color: var(--ink);
+  box-shadow: 0 2px 0 var(--ink);
+}
+/* Anonymous Hangul gift bubble, tracing pad, and both faces of the memory cards. */
+.overlay.stage > div > .animal + div,
+.overlay.stage > div > div:has(> .tracer),
+.overlay.stage [style*="preserve-3d"] > div {
+  outline: 3px solid var(--ink); outline-offset: 0;
+  border-color: transparent !important; border-radius: 26px !important;
+  box-shadow: 0 5px 0 var(--ink), inset 0 3px 0 #fff !important;
+  background-color: var(--sticker-paper) !important;
+}
+.overlay.stage [style*="preserve-3d"] > div:first-child:not([style*="url("]) {
+  background: var(--accent-soft) !important;
+}
+/* Raster-backed tokens retain their pictures; only remove the floating soft shadows. */
+.overlay.stage :is(.picimg, .board img, .tok-word img, .fruit, .item, .floater, .faller, .thing),
+.overlay.stage [style*="preserve-3d"] > div { filter: none !important; text-shadow: none !important; }
+.overlay.stage :is(.fruit, .floater, .faller):not([style*="url("]) {
+  background: var(--accent-soft) !important; color: var(--sticker-text) !important;
+  outline: 3px solid var(--ink); box-shadow: 0 5px 0 var(--ink), inset 0 3px 0 #fff !important;
+}
+.board :is(.bbig, .bword b), .things .op { color: var(--accent); text-shadow: none; }
+.board .bword { color: var(--sticker-text); }
+.rounds > div { outline: 3px solid var(--ink); box-shadow: none !important; background: #eee5ef !important; }
+.rounds > div[style*="radial-gradient"] { background: #ffda65 !important; }
+.mission > .unit {
+  outline: 3px solid var(--ink); color: var(--sticker-text) !important;
+  box-shadow: inset 0 3px 0 #fff !important;
+}
+/* Conic gradients encode progress, so retain their angles instead of flattening data. */
+.mission > .unit[style*="radial-gradient"] { background: #ffda65 !important; }
+:is(.imap, .hmap) .zone, body[data-world="snow"] .zone {
+  outline: 3px solid var(--ink); outline-offset: 0;
+  border-color: #fff; box-shadow: none;
+}
+.zone.unfinished::before { box-shadow: none; }
+.zone .arrow { text-shadow: none; }
+.place-badge svg { overflow: visible; }
+.place-badge circle { stroke: var(--ink); stroke-width: 3px; }
+.hmap .island > div:last-child {
+  outline: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink) !important;
+}
+.hmap .island > div:last-child > div { background: var(--sticker-paper) !important; }
+#app > .imap ~ div:has(> svg) {
+  background: #ffda65 !important; color: var(--sticker-text) !important;
+  outline: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink);
+}
+body[data-world] .overlay.stage::after, .overlay.stage::after {
+  background: var(--sticker-paper); box-shadow: 0 -3px 0 var(--ink);
+}
+.hub-doors, #app > div:has(> .hub-start) { background: var(--sticker-paper) !important; }
+.hub-door[data-subject="hangul"] { --door-color: #ff6fa5; }
+.hub-door[data-subject="english"] { --door-color: #ff8a3c; }
+.hub-door[data-subject="number"] { --door-color: #3fa9f5; }
+.hub-doors .hub-door { background: var(--door-color) !important; }
+.hub-door > span:last-child { color: var(--sticker-text) !important; }
+/* Explicit entrance exception: a wider arcade ticket, with its existing font and star count. */
+.hub-doors .hub-arcade {
+  width: calc(min(24vw, 34vh) + 44px); background: #ffe7a8 !important;
+  flex-direction: column; font-weight: 700;
+}
+.hub-arcade .star-jar { color: var(--sticker-text); }
+:is(.hub-start, .start-btn) circle[fill="url(#pg)"] { fill: var(--accent); }
+:is(.hub-start, .start-btn) circle[stroke="#fff"] { stroke: var(--ink); }
+body[data-subject] > .overlay:not(.stage):not(.parent-panel):not(.parent-gate),
+.overlay.party, .overlay.reward { background: var(--sticker-paper) !important; }
+.overlay.reward > div, body[data-subject] > .overlay > .gift { border-radius: 28px; outline: 3px solid var(--ink); background: #ffe7a8; box-shadow: 0 5px 0 var(--ink); }
+.balloon { outline: 3px solid var(--ink); background: #ffb8d9 !important; box-shadow: inset 0 4px 0 #fff !important; }
+.balloon:nth-of-type(6n+2) { background: #bfe3ff !important; }
+.balloon:nth-of-type(6n+3) { background: #fff0b0 !important; }
+.balloon:nth-of-type(6n+4) { background: #cff5c8 !important; }
+.balloon:nth-of-type(6n+5) { background: #e2d5ff !important; }
+.balloon:nth-of-type(6n) { background: #ffd9b8 !important; }
+/* Visible states sit above the dark outline. Keep the existing motion and hit-area pseudo elements. */
+:is(.btn-pic, .card, .choice, .stone, .jblock, .plate, .thing, .unit).pressed:not(:where(.parent-panel *, .parent-gate *, #arcade *)) {
+  box-shadow: 0 1px 0 var(--ink), inset 0 3px 0 #fff !important;
+  outline-color: var(--accent);
+}
+:is(.imap, .hmap) .zone:is(.pressed, .picked) {
+  background: #ffdc468c; outline: 4px solid var(--ink); box-shadow: 0 0 0 8px #ffdf55;
+}
+.overlay.stage :is(.glow, .slot2.next) {
+  box-shadow: 0 0 0 8px #ffdf55, 0 0 0 11px var(--ink) !important;
+}
+/* Answer buttons already pulse near the bottom guard: keep their halo inside. */
+.overlay.stage .choice.glow { box-shadow: inset 0 0 0 7px #ffdf55, 0 0 0 3px var(--ink) !important; }
+.overlay.stage .dragging { outline: 4px solid var(--accent); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .overlay.stage :is(.glow, .wiggle, .slot2.next) { animation: none !important; }
+}

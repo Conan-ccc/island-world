@@ -93,6 +93,6 @@ export function createTracer(container, key, opts = {}) {
   svg.addEventListener('pointerdown', down);
   svg.addEventListener('pointermove', move);
   svg.addEventListener('pointerup', up);
-  svg.addEventListener('pointercancel', () => { pid = null; pts = null; ink.setAttribute('d', ''); });
+  svg.addEventListener('pointercancel', e => { if (e.pointerId !== pid) return; pid = null; pts = null; ink.setAttribute('d', ''); });
   return { destroy() { svg.remove(); } };
 }

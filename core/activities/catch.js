@@ -23,8 +23,23 @@ export async function run(ctx, { rounds }) {
     const r = field.getBoundingClientRect();
     basket.style.left = Math.max(10, Math.min(90, ((e.clientX - r.left) / r.width) * 100)) + '%';
   };
-  field.addEventListener('pointerdown', follow);
-  field.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse' || e.buttons) follow(e); });
+  const fingers = new Map();
+  const first = () => fingers.keys().next().value;
+  field.addEventListener('pointerdown', e => {
+    fingers.set(e.pointerId, e);
+    try { field.setPointerCapture(e.pointerId); } catch { /* synthetic input */ }
+    if (first() === e.pointerId) follow(e);
+  });
+  field.addEventListener('pointermove', e => {
+    if (!fingers.has(e.pointerId)) return;
+    fingers.set(e.pointerId, e);
+    if (first() === e.pointerId) follow(e);
+  });
+  for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) field.addEventListener(name, e => {
+    const owned = first() === e.pointerId;
+    fingers.delete(e.pointerId);
+    if (owned && fingers.size) follow(fingers.get(first()));
+  });
 
   for (const r of rounds) {
     const unit = r.unit ?? r.target;

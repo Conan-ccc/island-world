@@ -1,3 +1,6 @@
+import { applyWorld, mapAtmosphere } from './world.js';
+import { onTap } from './tap.js';
+import { mapZones, nearestZone } from './map-zones.js';
 // Island engine: theme map, mission bar (what is left), "go here next" markers, varied activities.
 // One engine for every subject: what a subject does its own way comes from its config (subjects/<subject>/config.js):
 //   parent.needsSetup(state)  the island waits for the first-run setup on the home (hangul: a name with Hangul)
@@ -46,9 +49,9 @@ const IDLE_MS = 9000; // nothing touched and nothing said for this long: say the
 const FALLBACK_SPOTS = [[22, 25], [50, 15], [82, 32], [80, 72], [30, 70], [62, 60]];
 const HOME_ICON = '<svg viewBox="0 0 60 60" width="48" height="48"><path d="M8 30 L30 10 L52 30 V52 H8Z" fill="#DCEBFF" stroke="#8EC5FF" stroke-width="3"/><rect x="24" y="36" width="12" height="16" fill="#8EC5FF"/></svg>';
 const BACK_ICON = '<svg viewBox="0 0 60 60" width="52" height="52"><circle cx="30" cy="30" r="26" fill="#fff"/><path d="M34 18 L20 30 L34 42" stroke="#C98AA8" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const ARROW = '<svg viewBox="0 0 60 70" width="64" height="74"><path d="M30 66 L6 34 H20 V4 H40 V34 H54Z" fill="#FF6FA5" stroke="#fff" stroke-width="5" stroke-linejoin="round"/></svg>';
-const CHECK = '<svg viewBox="0 0 40 40" width="46" height="46"><circle cx="20" cy="20" r="18" fill="#5DBB6A" stroke="#fff" stroke-width="3"/><path d="M11 21 L18 28 L30 13" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const SPARK = '<svg viewBox="0 0 40 40" width="46" height="46"><circle cx="20" cy="20" r="18" fill="#FFD84D" stroke="#fff" stroke-width="3"/><path d="M20 8 L23 17 L32 20 L23 23 L20 32 L17 23 L8 20 L17 17Z" fill="#fff"/></svg>';
+const ARROW = '👆';
+const CHECK = '<svg viewBox="0 0 40 40" width="64" height="64"><circle cx="20" cy="20" r="18" fill="#5DBB6A" stroke="#fff" stroke-width="3"/><path d="M11 21 L18 28 L30 13" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const PLAY_BADGE = '<svg viewBox="0 0 64 64" width="64" height="64"><circle cx="32" cy="32" r="29" fill="#FF6FA5" stroke="#fff" stroke-width="4"/><path d="M25 18 L46 32 L25 46Z" fill="#fff"/></svg>';
 const CROWN = '<svg viewBox="0 0 40 30" width="30" height="22"><path d="M3 26 L6 8 L14 16 L20 4 L26 16 L34 8 L37 26Z" fill="#FFC93C" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>';
 
 // 0..1 progress of one letter: successes count, but a second kind of play is needed to finish
@@ -73,6 +76,7 @@ export function placeNeed(island, units, creditableUnits, type) {
 
 export async function startIsland(subject, n) {
   useFonts(subject);
+  applyWorld(subject);
   document.body.dataset.subject = subject.id;
   // the offline copy: this subject's pictures and sounds first
   warmCache(['assets/' + subject.id + '/']);
@@ -111,7 +115,7 @@ export async function startIsland(subject, n) {
   if (!island.plays) island.plays = {};
   // the play a place runs on this visit: places with two plays take turns
   const mechOf = p => mechAt(p, island.plays[p.id]);
-  let busy = false, unlocked = false;
+  let unlocked = false;
   preloadSfx();
   preloadSpeech([...Object.values(LINES), ...(subject.preloadLines || []), ...units.map(lineOf)]);
 
@@ -136,6 +140,8 @@ export async function startIsland(subject, n) {
   }
 
   function renderMap() {
+    const zones = mapZones(theme.places.map(p => spots[p.id]));
+    let travel = 0, destination = null, opened = false;
     const needs = Object.fromEntries(theme.places.map(p => [p.id, needOf(p)]));
     const notToday = theme.places.filter(p => !H.today.places.includes(p.id));
     const best = [...theme.places].sort((a, b) => (needs[b.id] - needs[a.id]) || ((notToday.includes(b) ? 1 : 0) - (notToday.includes(a) ? 1 : 0)))[0];
@@ -143,15 +149,15 @@ export async function startIsland(subject, n) {
     app.innerHTML = `<div class="imap" style="position:absolute;left:50%;top:50%;width:max(100vw,160vh);height:max(62.5vw,100vh);translate:-50% -50%;overflow:hidden">
         <div class="scene-bg" style="background-image:url(${asset(theme.map)});animation-duration:40s"></div>
         <div class="cloudshade" style="top:6%"></div><div class="cloudshade" style="top:50%;animation-delay:-15s;animation-duration:40s"></div>
-        ${theme.places.map(p => {
+        ${theme.places.map((p, i) => {
           const [x, y] = spots[p.id];
           const need = needs[p.id];
-          return `<div class="place" data-id="${p.id}" style="position:absolute;left:${x}%;top:${y}%;width:15%;aspect-ratio:1;translate:-50% -50%;border-radius:50%;cursor:pointer">
-            ${need > 0 ? '<div class="ring"></div>' : ''}
-            <div style="position:absolute;right:4%;top:2%;pointer-events:none" class="${need > 0 ? 'pulse' : ''}">${need > 0 ? SPARK : CHECK}</div>
+          return `<div class="place zone ${need > 0 ? 'unfinished' : 'done'}" data-id="${p.id}" style="position:absolute;left:${x}%;top:${y}%;width:${zones[i].radius * 2}%;aspect-ratio:1;translate:-50% -50%;border-radius:50%;cursor:pointer">
+
+            <div style="position:absolute;right:4%;top:2%;pointer-events:none" class="place-badge">${need > 0 ? PLAY_BADGE : CHECK}</div>
             ${showBest && p.id === best.id ? (y < 30
-              ? `<div class="arrow" style="position:absolute;left:50%;bottom:-48%;translate:-50% 0;pointer-events:none"><div style="rotate:180deg">${ARROW}</div></div>`
-              : `<div class="arrow" style="position:absolute;left:50%;top:-38%;translate:-50% 0;pointer-events:none">${ARROW}</div>`) : ''}</div>`;
+              ? `<div class="arrow" style="position:absolute;left:50%;bottom:-48px;translate:-50% 0;pointer-events:none"><div style="rotate:0deg">${ARROW}</div></div>`
+              : `<div class="arrow" style="position:absolute;left:50%;top:-48px;translate:-50% 0;pointer-events:none">${ARROW}</div>`) : ''}</div>`;
         }).join('')}
         <div class="walker" style="position:absolute;width:9%;left:${spots.start[0]}%;top:${spots.start[1]}%;translate:-50% -88%;z-index:5">${charHtml(H.characterId, H.stage, { decoration: H.wearing })}</div>
       </div>
@@ -159,36 +165,48 @@ export async function startIsland(subject, n) {
       ${island.cleared ? `<div style="position:absolute;bottom:16px;left:50%;translate:-50% 0;z-index:7;background:rgba(255,246,194,.95);border-radius:24px;padding:8px 18px;font-size:20px;font-weight:700;color:#7A4A00;display:flex;align-items:center;gap:8px">${CROWN} 다 했어요!</div>` : ''}
       <button class="btn-pic home-btn" style="position:absolute;top:14px;left:14px;z-index:8" aria-label="집">${HOME_ICON}</button>`;
     const map = app.querySelector('.imap'), walker = app.querySelector('.walker');
+    mapAtmosphere(app, map, zones, asset(theme.map));
     for (let i = 0; i < 14; i++) map.appendChild(el('div', `left:${Math.random() * 100}%;top:${Math.random() < .5 ? Math.random() * 18 : 78 + Math.random() * 20}%;animation-delay:${-Math.random() * 2.4}s`, '', 'glint'));
-    app.querySelector('.arrow')?.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-16px)' }, { transform: 'translateY(0)' }], { duration: 900, iterations: Infinity });
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) app.querySelector('.arrow')?.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-16px)' }, { transform: 'translateY(0)' }], { duration: 900, iterations: Infinity });
     attachPetting(walker, {
       onTap: () => { ensureUnlocked(); walker.classList.remove('boing'); void walker.offsetWidth; walker.classList.add('boing'); playSfx('giggle'); },
       onRub: p => { burst(p.x, p.y, 'hearts'); playSfx('sparkle'); },
       onHold: () => { walker.classList.add('hug'); playSfx('giggle'); speak(LINES.love); setTimeout(() => walker.classList.remove('hug'), 900); },
     });
-    app.querySelectorAll('.unit').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); ensureUnlocked(); speak(lineOf(b.dataset.u)); }));
-    app.querySelector('.home-btn').addEventListener('click', () => {
+    app.querySelectorAll('.unit').forEach(b => onTap(b, e => { e.stopPropagation(); ensureUnlocked(); speak(lineOf(b.dataset.u)); }));
+    onTap(app.querySelector('.home-btn'), () => {
       if (!subject.byeLine) { location.href = 'sea.html'; return; }
       speak(subject.byeLine); setTimeout(() => { location.href = 'sea.html'; }, 700);
     });
-    map.addEventListener('click', async e => {
+    const go = async (e, id = null) => {
+      if (opened || document.querySelector('.overlay.stage')) return;
       ensureUnlocked();
-      if (busy || walker.contains(e.target)) return;
       const r = map.getBoundingClientRect();
-      const g = e.target.closest('.place');
-      const tx = g ? spots[g.dataset.id][0] : ((e.clientX - r.left) / r.width) * 100;
-      const ty = g ? spots[g.dataset.id][1] + 4 : ((e.clientY - r.top) / r.height) * 100;
-      const cx = parseFloat(walker.style.left), cy = parseFloat(walker.style.top);
-      const ms = Math.min(1300, Math.max(300, Math.hypot((tx - cx) * r.width / 100, (ty - cy) * r.height / 100) * 2.2));
-      busy = true;
+      const x = (e.clientX - r.left) / r.width * 100, y = (e.clientY - r.top) / r.height * 100;
+      const index = id === null ? nearestZone(zones, x, y, r.width / r.height) : theme.places.findIndex(p => p.id === id);
+      const selected = index < 0 ? null : theme.places[index].id;
+      if (selected && destination === selected) return;
+      destination = selected;
+      const token = ++travel;
+      map.querySelectorAll('.place').forEach(p => p.classList.toggle('picked', p.dataset.id === selected));
+      const tx = index < 0 ? x : zones[index].x, ty = index < 0 ? y : zones[index].y + 4;
+      const wr = walker.getBoundingClientRect();
+      const cx = (wr.left + wr.width / 2 - r.left) / r.width * 100;
+      const cy = (wr.top + wr.height * .88 - r.top) / r.height * 100;
+      walker.style.transition = 'none'; walker.style.left = cx + '%'; walker.style.top = cy + '%';
+      void walker.offsetWidth;
+      const ms = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : Math.min(500, Math.max(300, Math.hypot((tx - cx) * r.width / 100, (ty - cy) * r.height / 100) * 2.2));
       walker.style.transition = `left ${ms}ms linear, top ${ms}ms linear`;
       walker.style.left = tx + '%'; walker.style.top = ty + '%';
       walker.classList.add('walking'); playSfx('pop');
       await wait(ms);
+      if (token !== travel || !map.isConnected) return;
       walker.classList.remove('walking');
-      busy = false;
-      if (g) openPlace(g.dataset.id);
-    });
+      if (selected) { opened = true; openPlace(selected); }
+    };
+    map.querySelectorAll('.place').forEach(p => onTap(p, e => { e.stopPropagation(); go(e, p.dataset.id); }));
+    onTap(map, e => { if (!walker.contains(e.target) && !e.target.closest('.place')) go(e); }, { gap: 0, multi: true, ignore: e => walker.contains(e.target) || !!e.target.closest('.place') });
+
   }
 
   function onSuccess(item, type) {
@@ -242,7 +260,7 @@ export async function startIsland(subject, n) {
     const back = el('button', 'position:absolute;top:14px;left:14px;z-index:20;background:none;box-shadow:none', BACK_ICON, 'btn-pic back-btn');
     stage.appendChild(back);
     let closed = false;
-    const closedP = new Promise(res => back.addEventListener('click', () => { closed = true; res('closed'); }));
+    const closedP = new Promise(res => onTap(back, () => { closed = true; res('closed'); }));
     let talking = 0, lastAct = Date.now(), nudges = 0;
     const ctx = {
       subject, stage: inner, phrase, sfx: playSfx, burst, rng: Math.random, speakLines: LINES, skin: place.skin || {}, settings: H.settings,

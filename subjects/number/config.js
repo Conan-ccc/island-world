@@ -55,6 +55,7 @@ function parentRows(state, ctx) {
 
 export const subject = {
   id: 'number',
+  world: { id: 'snow', accent: '#3FA9F5', accentSoft: '#8CCBFA', drift: 'snow' },
   title: '숫자 섬 여행',
   themeColor: '#FFB86B',
   islands: { available: [1, 2, 3, 4, 5, 6, 7, 8], count: 8 },

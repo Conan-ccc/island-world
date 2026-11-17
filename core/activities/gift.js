@@ -1,3 +1,4 @@
+import { onTap } from '../tap.js';
 // 동물 친구 선물: a friend asks for something (the bubble shows it, or only "?"); drag the matching card to the friend.
 // The bubble and the cards are drawn by the subject's look (ctx.subject.look.gift):
 //   bubble(r) -> { style, html, cls }, card(t, k) -> { style, html, cls, x, y }, solved(bubble, r): the bubble once answered,
@@ -32,8 +33,8 @@ export async function run(ctx, { rounds }) {
     const answerCard = cards.find(x => x.dataset.text === r.answer);
     ctx.boardLine = r.prompt;
     ask(ctx, r.prompt, answerCard);
-    bubble.addEventListener('click', () => ask(ctx, L.again(r), answerCard));
-    if (L.friendAsks) friend.addEventListener('click', () => ask(ctx, L.again(r), answerCard));
+    onTap(bubble, () => ask(ctx, L.again(r), answerCard));
+    if (L.friendAsks) onTap(friend, () => ask(ctx, L.again(r), answerCard));
     let wrong = 0;
     await new Promise(done => {
       for (const c of cards) makeDraggable(c, {

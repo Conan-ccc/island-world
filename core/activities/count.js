@@ -1,3 +1,4 @@
+import { onTap } from '../tap.js';
 // 하나씩 세기: tap every thing once (each tap says the count), then pick the numeral.
 // Adding shows two groups; taking away shows some of them flying off first. A box of ten is one tap.
 import { scene, el, buddy, wait, ask, praise, progress, asset, center, wiggle, glow, unglow, pickOne } from './common.js';
@@ -56,7 +57,7 @@ export async function run(ctx, { rounds }) {
       ask(ctx, r.prompt, items[0]);
       let k = 0;
       await new Promise(done => {
-        for (const t of items) t.addEventListener('pointerdown', () => {
+        for (const t of items) onTap(t, () => {
           if (t.dataset.done) return;
           t.dataset.done = '1';
           unglow(ctx.stage);
@@ -67,7 +68,7 @@ export async function run(ctx, { rounds }) {
           const [x, y] = center(t); ctx.burst(x, y, 'stars');
           ctx.promptTarget = items.find(o => !o.dataset.done) || null;
           if (k === items.length) setTimeout(done, 650);
-        });
+        }, { gap: 0 });
       });
     } else {
       area.insertAdjacentHTML('beforeend', '<span class="qty zero" data-n="0" style="width:min(30vw,36vh);height:min(18vw,22vh)"></span>');

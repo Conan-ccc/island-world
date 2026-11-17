@@ -1,3 +1,4 @@
+import { onTap } from '../tap.js';
 // Helpers shared by the activities. They know no subject: what a play token looks like and says, the question board
 // and the praise lines come from the subject's config (ctx.subject).
 import { asset } from '../env.js';
@@ -45,7 +46,7 @@ export function progress(ctx, total) {
 // The child's character in the corner. Tapping it repeats the current prompt.
 export function buddy(ctx, style = 'left:1%;bottom:1%;width:min(17vw,24vh)') {
   const b = el('div', `position:absolute;${style};z-index:5;cursor:pointer`, ctx.characterHtml, 'buddy');
-  b.addEventListener('click', () => { wiggle(b); if (ctx.prompt) ask(ctx, ctx.prompt, ctx.promptTarget); });
+  onTap(b, () => { wiggle(b); if (ctx.prompt) ask(ctx, ctx.prompt, ctx.promptTarget); });
   ctx.stage.appendChild(b);
   return b;
 }
@@ -54,7 +55,7 @@ export function buddy(ctx, style = 'left:1%;bottom:1%;width:min(17vw,24vh)') {
 export function showBoard(ctx, inner) {
   ctx.stage.querySelector('.board')?.remove();
   const b = el('div', '', inner, 'board');
-  b.addEventListener('click', () => { if (ctx.boardLine) ctx.speak(ctx.boardLine); });
+  onTap(b, () => { if (ctx.boardLine) ctx.speak(ctx.boardLine); });
   ctx.stage.appendChild(b);
   return b;
 }
@@ -87,7 +88,7 @@ export function pickOne(ctx, options, answer, prompt) {
   ask(ctx, prompt, target);
   let wrong = 0, solved = false;
   const done = new Promise(res => {
-    for (const b of btns) b.addEventListener('click', () => {
+    for (const b of btns) onTap(b, () => {
       if (solved) return;
       if (b === target) {
         solved = true;

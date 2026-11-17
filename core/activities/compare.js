@@ -1,3 +1,4 @@
+import { onTap } from '../tap.js';
 // 많다 적다: two plates of things; tap the one with more (or with fewer). The things are drawn by ctx.subject.draw.qtyHtml.
 import { scene, el, buddy, wait, ask, praise, progress, center, wiggle, glow, unglow } from './common.js';
 
@@ -22,7 +23,7 @@ export async function run(ctx, { rounds }) {
     ask(ctx, r.prompt, target);
     let wrong = 0;
     await new Promise(done => {
-      for (const p of plates) p.addEventListener('click', () => {
+      for (const p of plates) onTap(p, () => {
         if (p === target) { done(); return; }
         wiggle(p); ctx.sfx('boing');
         wrong += 1;

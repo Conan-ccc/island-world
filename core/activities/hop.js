@@ -1,3 +1,4 @@
+import { onTap } from '../tap.js';
 // 징검다리: three stepping stones at a time; tap the one that matches what you heard and the friend hops onto it,
 // stone by stone, all the way to the star on the other side
 import { scene, shuffle, at, el, glow, unglow, wiggle, wait, ask, praise, progress, center } from './common.js';
@@ -19,7 +20,7 @@ export async function run(ctx, { rounds }) {
   const beat = goal.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.18)' }, { transform: 'scale(1)' }], { duration: 1200, iterations: Infinity });
   ctx.stage.appendChild(goal);
   const hero = el('div', 'position:absolute;left:8%;top:63%;width:min(13vw,18vh);translate:-50% -82%;z-index:6;cursor:pointer;transition:left .5s ease-in-out, top .5s ease-in-out', ctx.characterHtml, 'hero buddy');
-  hero.addEventListener('click', () => { wiggle(hero); if (ctx.prompt) ask(ctx, ctx.prompt, ctx.promptTarget); });
+  onTap(hero, () => { wiggle(hero); if (ctx.prompt) ask(ctx, ctx.prompt, ctx.promptTarget); });
   ctx.stage.appendChild(hero);
   const jumpTo = async (x, y) => {
     hero.classList.add('walking'); ctx.sfx('pop');
@@ -46,7 +47,7 @@ export async function run(ctx, { rounds }) {
     ask(ctx, r.prompt, target);
     let wrong = 0, solved = false;
     await new Promise(done => {
-      for (const s of stones) s.addEventListener('click', () => {
+      for (const s of stones) onTap(s, () => {
         if (solved || s.dataset.out) return;
         if (s === target) {
           solved = true;

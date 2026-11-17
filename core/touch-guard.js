@@ -15,6 +15,9 @@ export function guardTouches(doc = globalThis.document) {
   for (const type of ['gesturestart', 'gesturechange', 'gestureend']) doc.addEventListener(type, stop, opts);
   doc.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) stop(e); }, opts);
   doc.addEventListener('dblclick', stop, opts);
+  for (const type of ['dragstart', 'contextmenu', 'selectstart']) {
+    doc.addEventListener(type, e => { if (!e.target?.closest?.('input, textarea, select')) stop(e); }, opts);
+  }
   return true;
 }
 
