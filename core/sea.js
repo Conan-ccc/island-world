@@ -1,5 +1,8 @@
+import { ROOM_ICON, PLAY_ICON, CLOSE_ICON } from './room-icons.js';
+import { openMyRoom, snackBadge } from './room.js';
 import { applyWorld, mapAtmosphere } from './world.js';
 import { onTap } from './tap.js';
+import { mountStarJar } from './goal-ui.js';
 import { mapZones, nearestZone, recommendedIsland } from './map-zones.js';
 // A subject's home: start, first-run setup, character birth, illustrated sea map, decorations, friend room, growth scene.
 // One home for every subject; what a subject does its own way comes from its config (subjects/<subject>/config.js):
@@ -23,10 +26,7 @@ import { isMastered } from './mastery.js';
 import { asset, useFonts } from './env.js';
 import { warmCache } from './register-sw.js';
 
-const PLAY_ICON = '<svg viewBox="0 0 100 100" width="160" height="160"><defs><radialGradient id="pg" cx="35%" cy="30%"><stop offset="0" stop-color="#FFC9DE"/><stop offset="1" stop-color="#FF6FA5"/></radialGradient></defs><circle cx="50" cy="52" r="44" fill="#E05A8C"/><circle cx="50" cy="48" r="44" fill="url(#pg)"/><circle cx="50" cy="48" r="44" fill="none" stroke="#fff" stroke-width="4"/><path d="M41 30 L71 48 L41 66Z" fill="#fff"/></svg>';
 const BAG_ICON = '<svg viewBox="0 0 60 60" width="56" height="56"><path d="M14 22 h32 l4 30 h-40Z" fill="#FFB8D9" stroke="#F58FB4" stroke-width="2"/><path d="M22 22 q0-12 8-12 q8 0 8 12" fill="none" stroke="#F58FB4" stroke-width="3"/><circle cx="30" cy="36" r="5" fill="#FFE27A"/></svg>';
-const ROOM_ICON = '<svg viewBox="0 0 60 60" width="56" height="56"><path d="M8 28 L30 10 L52 28 V52 H8Z" fill="#FFE7B8" stroke="#E8B04A" stroke-width="2"/><path d="M24 52 V38 h12 v14" fill="#FFB27A"/><path d="M30 24 c-3-4-9-1-6 4 l6 5 l6-5 c3-5-3-8-6-4Z" fill="#FF6FA5"/></svg>';
-const CLOSE_ICON = '<svg viewBox="0 0 40 40" width="44" height="44"><circle cx="20" cy="20" r="18" fill="#fff"/><path d="M13 13 L27 27 M27 13 L13 27" stroke="#C98AA8" stroke-width="4" stroke-linecap="round"/></svg>';
 const FLAG = '<svg viewBox="0 0 40 40" width="46" height="46"><path d="M10 36 V6" stroke="#8a6" stroke-width="3"/><path d="M11 6 L34 12 L11 18Z" fill="#FF6FA5"/></svg>';
 // the way back to the entrance (all the islands): a little signpost
 const ENTRANCE_ICON = '<svg viewBox="0 0 60 60" width="48" height="48"><path d="M30 14 V54" stroke="#C9A27A" stroke-width="5" stroke-linecap="round"/><path d="M12 14 H44 L52 22 L44 30 H12Z" fill="#FFE7B8" stroke="#E8B04A" stroke-width="3" stroke-linejoin="round"/><circle cx="22" cy="22" r="4" fill="#FF6FA5"/><circle cx="34" cy="22" r="4" fill="#7FD8C4"/></svg>';
@@ -87,9 +87,10 @@ export function startSea(subject) {
     <div class="home-char" style="position:absolute;left:47%;bottom:1%;width:min(15vw,22vh);z-index:5">${myChar()}</div>
     <div style="position:absolute;right:16px;bottom:16px;display:flex;gap:14px;z-index:6">
       <button class="btn-pic bag-btn" aria-label="장식">${BAG_ICON}</button>
-      <button class="btn-pic room-btn" aria-label="친구 방">${ROOM_ICON}</button>
+      <button class="btn-pic room-btn" aria-label="내 방">${ROOM_ICON}${snackBadge(state.room.snacks)}</button>
     </div>
     <button class="btn-pic entrance-btn" style="position:absolute;top:14px;left:14px;z-index:6" aria-label="입구">${ENTRANCE_ICON}</button>`;
+    mountStarJar({ app, state, save, redraw: renderHome });
     const map = app.querySelector('.hmap');
     mapAtmosphere(app, map, zones, asset(subject.themes.HOME_MAP || 'bg/home.jpg', subject.id));
     for (let i = 0; i < 18; i++) map.insertAdjacentHTML('beforeend', `<div class="glint" style="left:${Math.random() * 100}%;top:${Math.random() * 100}%;animation-delay:${-Math.random() * 2.4}s"></div>`);
@@ -147,14 +148,7 @@ export function startSea(subject) {
   }
 
   function openRoom() {
-    playSfx('pop'); playMusic('music/calm.mp3');
-    const fr = state.friends.filter(f => f?.subject === subject.id); // the friend room shows this subject's friends only, as before
-    const cushion = inner => `<div style="width:180px;text-align:center"><div class="room-friend" style="width:160px;margin:0 auto;min-height:160px">${inner}</div><svg viewBox="0 0 160 40" width="180"><ellipse cx="80" cy="20" rx="76" ry="16" fill="#FFB8D9"/><ellipse cx="80" cy="16" rx="66" ry="10" fill="#FFD3E8"/></svg></div>`;
-    const list = fr.length ? fr.map(f => cushion(charHtml(f.characterId, 7))).join('') : cushion('') + cushion('') + cushion('');
-    const ov = overlay(`<div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;align-items:end">${list}</div>`, 'linear-gradient(#FFF0F7,#FFE3F0)');
-    onTap(ov.querySelector('.ov-close'), () => playMusic(HOME_MUSIC));
-    if (!fr.length) speak(LINES.roomEmpty);
-    ov.querySelectorAll('.room-friend').forEach(el => { if (el.innerHTML) attachPetting(el, { onTap: () => { el.classList.remove('boing'); void el.offsetWidth; el.classList.add('boing'); playSfx('giggle'); } }); });
+    openMyRoom({ state, subject, save, close: () => { playMusic(HOME_MUSIC); renderHome(); } });
   }
 
   // the gift box on screen, if any: only one at a time, and stop() takes it away without hatching
@@ -211,15 +205,41 @@ export function startSea(subject) {
     await mapReady;
     playMusic(HOME_MUSIC);
     renderHome();
+    const roomRequested = new URLSearchParams(location.search).get('room') === '1';
     const m = /evolve=(\d)-(\d)/.exec(location.search);
     if (m) {
-      history.replaceState(null, '', location.pathname);
+      const params = new URLSearchParams(location.search); params.delete('evolve');
+      history.replaceState(null, '', location.pathname + (params.size ? '?' + params : '') + location.hash);
       await playEvolution(document.body, H().characterId, Number(m[1]), Number(m[2]));
       renderHome();
     }
+    if (roomRequested) {
+      const params = new URLSearchParams(location.search); params.delete('room');
+      history.replaceState(null, '', location.pathname + (params.size ? '?' + params : '') + location.hash);
+      openRoom();
+    }
+  }
+
+  // Coming from another page of this app (a door, an island's home button, "to my room"): the child already pressed
+  // start, so the map opens at once and sound unlocks on the first touch, as on an island. A fresh load, a reload, the
+  // first run, a birth, a growth scene and a waiting update keep the start button.
+  function fromApp() {
+    try {
+      const nav = performance.getEntriesByType('navigation')[0];
+      return (!nav || nav.type === 'navigate') && !!document.referrer && new URL(document.referrer).origin === location.origin;
+    } catch { return false; }
   }
 
   function start() {
+    if (fromApp() && H().characterId && !needsSetup() && !/[?&]evolve=/.test(location.search) && !window.__swUpdateReady) {
+      addEventListener('pointerup', () => { unlockSpeech(); unlockAudio(); preloadSfx(); }, { capture: true, once: true });
+      navigator.storage?.persist?.().catch(() => {});
+      // a second tap of the button that brought the child here must not press what is now under the finger
+      app.style.pointerEvents = 'none';
+      setTimeout(() => { app.style.pointerEvents = ''; }, 400);
+      afterStart();
+      return;
+    }
     app.innerHTML = `<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:url(${asset(subject.themes.HOME_MAP || 'bg/home.jpg', subject.id)}) center/cover">
     ${H().characterId ? `<div style="width:min(26vw,34vh)">${myChar()}</div>` : ''}
     <button class="start-btn" style="border:none;background:none;padding:0" aria-label="시작">${PLAY_ICON}</button></div>`;

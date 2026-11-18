@@ -1,5 +1,9 @@
 import { applyWorld, mapAtmosphere } from './world.js';
 import { onTap } from './tap.js';
+import { mountQuest, mountStarJar } from './goal-ui.js';
+import { addSnack, findPiece, questState } from './goal.js';
+import { GOAL_LINES } from './goal-lines.js';
+import { countStars } from './stars.js';
 import { mapZones, nearestZone } from './map-zones.js';
 // Island engine: theme map, mission bar (what is left), "go here next" markers, varied activities.
 // One engine for every subject: what a subject does its own way comes from its config (subjects/<subject>/config.js):
@@ -116,14 +120,16 @@ export async function startIsland(subject, n) {
   // the play a place runs on this visit: places with two plays take turns
   const mechOf = p => mechAt(p, island.plays[p.id]);
   let unlocked = false;
+  let foundPiece = null, starsBefore;
   preloadSfx();
   preloadSpeech([...Object.values(LINES), ...(subject.preloadLines || []), ...units.map(lineOf)]);
 
   const ensureUnlocked = () => {
-    if (unlocked) return;
+    if (unlocked) return false;
     unlocked = true; unlockSpeech(); unlockAudio(); playMusic(theme.music);
     const welcome = island.cleared ? LINES.allDone : LINES.welcome;
-    speak(subject.greet ? [subject.greet, welcome] : welcome);
+    speak([...(subject.greet ? [subject.greet] : []), welcome, ...(!questState(H.quests[n]).done ? [GOAL_LINES['quest.ask']] : [])]);
+    return true;
   };
 
   const needOf = p => placeNeed(island, units, subject.content.creditable(n, mechOf(p), content), MECH_TYPE[mechOf(p)]);
@@ -164,6 +170,9 @@ export async function startIsland(subject, n) {
       ${missionBar()}
       ${island.cleared ? `<div style="position:absolute;bottom:16px;left:50%;translate:-50% 0;z-index:7;background:rgba(255,246,194,.95);border-radius:24px;padding:8px 18px;font-size:20px;font-weight:700;color:#7A4A00;display:flex;align-items:center;gap:8px">${CROWN} 다 했어요!</div>` : ''}
       <button class="btn-pic home-btn" style="position:absolute;top:14px;left:14px;z-index:8" aria-label="집">${HOME_ICON}</button>`;
+    mountStarJar({ app, state, save: () => saveState(state), redraw: renderMap, before: starsBefore, unlock: ensureUnlocked });
+    mountQuest({ app, state, subject: subject.id, n, zones, places: theme.places, save: () => saveState(state), redraw: renderMap, found: foundPiece, unlock: ensureUnlocked });
+    foundPiece = null; starsBefore = undefined;
     const map = app.querySelector('.imap'), walker = app.querySelector('.walker');
     mapAtmosphere(app, map, zones, asset(theme.map));
     for (let i = 0; i < 14; i++) map.appendChild(el('div', `left:${Math.random() * 100}%;top:${Math.random() < .5 ? Math.random() * 18 : 78 + Math.random() * 20}%;animation-delay:${-Math.random() * 2.4}s`, '', 'glint'));
@@ -179,7 +188,7 @@ export async function startIsland(subject, n) {
       speak(subject.byeLine); setTimeout(() => { location.href = 'sea.html'; }, 700);
     });
     const go = async (e, id = null) => {
-      if (opened || document.querySelector('.overlay.stage')) return;
+      if (opened || document.querySelector('.overlay')) return;
       ensureUnlocked();
       const r = map.getBoundingClientRect();
       const x = (e.clientX - r.left) / r.width * 100, y = (e.clientY - r.top) / r.height * 100;
@@ -249,6 +258,7 @@ export async function startIsland(subject, n) {
     const place = theme.places.find(p => p.id === id);
     const mech = place && (forceMech || mechOf(place));
     if (!place || !RUNNERS[mech]) return;
+    starsBefore = countStars(state);
     markVisit(island, id, today());
     island.plays[id] = (island.plays[id] || 0) + 1;
     if (!H.today.places.includes(id)) H.today.places.push(id);
@@ -285,6 +295,11 @@ export async function startIsland(subject, n) {
     stopSpeech();
     stage.remove();
     if (outcome === 'done') {
+      state.room = addSnack(state.room);
+      const prior = questState(H.quests[n]);
+      H.quests[n] = findPiece(prior, id, theme.places.map(p => p.id));
+      if (!prior.found.includes(id)) foundPiece = id;
+      saveState(state);
       speak(LINES.party);
       await balloonParty({ sfx: playSfx, burst, characterHtml: ctx.characterHtml });
       stopSpeech();

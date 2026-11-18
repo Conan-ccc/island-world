@@ -18,7 +18,7 @@ export function newIsland() {
 }
 
 export function newSubject(subject) {
-  return { characterId: null, stage: 0, decorations: [], wearing: null, lastRewardDay: null, today: null, islands: {}, settings: { ...SUBJECT_SETTINGS[subject] } };
+  return { characterId: null, stage: 0, decorations: [], wearing: null, lastRewardDay: null, today: null, islands: {}, quests: {}, settings: { ...SUBJECT_SETTINGS[subject] } };
 }
 
 export const defaultFamily = () => [
@@ -39,6 +39,7 @@ export function defaultState() {
     friends: [],
     imported: { hangul: false, english: false, number: false },
     arcade: defaultArcade(),
+    room: { owned: [], placed: [], snacks: 0, opened: 0 },
     saveError: false,
   };
 }
@@ -56,6 +57,21 @@ const medal = v => (typeof v === 'number' && Number.isFinite(v) ? Math.min(3, Ma
 const BAD_KEY = '__proto__';
 const strings = list => [...new Set((Array.isArray(list) ? list : []).filter(x => typeof x === 'string'))];
 const union = (a, b) => strings([...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])]);
+const bounded = (v, max) => Number.isInteger(v) && v >= 0 && v <= max ? v : 0;
+export function repairRoom(value) {
+  const r = isObj(value) ? value : {};
+  return { owned: strings(r.owned), placed: (Array.isArray(r.placed) ? r.placed : []).filter(p =>
+    isObj(p) && typeof p.id === 'string' && [p.x, p.y].every(v => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 100)
+  ).map(({ id, x, y }) => ({ id, x, y })), snacks: bounded(r.snacks, 9), opened: bounded(r.opened, 12) };
+}
+export function repairQuests(value) {
+  const quests = {};
+  for (const [id, q] of Object.entries(isObj(value) ? value : {})) {
+    if (id === BAD_KEY || !isObj(q)) continue;
+    quests[id] = { found: strings(q.found), done: q.done === true, gift: q.gift === true };
+  }
+  return quests;
+}
 const gameOf = g => {
   const game = isObj(g) ? g : {};
   return { ...game, medals: (Array.isArray(game.medals) ? game.medals : []).slice(0, ARCADE_STAGES).map(medal) };
@@ -152,9 +168,11 @@ export function migrate(raw) {
   // a friend entry that is not an object (null, a string) would stop the friend room and island 8: dropped
   st.friends = st.friends.filter(isObj);
   st.arcade = repairArcade(st.arcade);
+  st.room = repairRoom(st.room);
   for (const subject of SUBJECTS) {
     if (!isObj(st.subjects[subject])) st.subjects[subject] = newSubject(subject);
     const sub = st.subjects[subject];
+    sub.quests = repairQuests(sub.quests);
     if (!isObj(sub.islands)) sub.islands = {};
     if (!isObj(sub.settings)) sub.settings = { ...SUBJECT_SETTINGS[subject] };
     for (const [n, isl] of Object.entries(sub.islands)) sub.islands[n] = merge(newIsland(), isl);
@@ -235,6 +253,12 @@ function takeOthers(state, now, own, claimed) {
   let other;
   try { other = migrate(JSON.parse(now)); } catch (e) { return e?.message !== 'newer-save'; }
   const mine = s => s === own || claimed.has(s);
+  const room = repairRoom(state.room);
+  let base;
+  try { base = migrate(JSON.parse(READ.get(state))).room; } catch { /* unreadable baseline: keep local placement and snacks */ }
+  state.room = { ...room, owned: union(room.owned, other.room.owned), opened: Math.max(room.opened, other.room.opened),
+    placed: base && JSON.stringify(room.placed) === JSON.stringify(base.placed) ? other.room.placed : room.placed,
+    snacks: base ? Math.max(0, Math.min(9, other.room.snacks + room.snacks - base.snacks)) : room.snacks };
   if (!isObj(state.subjects)) state.subjects = {};
   if (!isObj(state.imported)) state.imported = {};
   for (const s of SUBJECTS) {
