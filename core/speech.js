@@ -1,13 +1,13 @@
 // Speech: prepared free AI voice clips (<subject assets>/voice/<hash>.mp3) through Web Audio.
 // speak() takes one text or an array of texts and plays them in order, e.g. ['삼', '열매를 따볼까?'].
-// Each piece falls back on its own to the iPad's built-in voice (Korean, or English for English pieces).
+// Missing clips can fall back to the built-in voice. A prepared clip stays silent while audio is locked.
 // What differs between the subjects comes in once per page with configureSpeech(): the clip index and hash, the phrases,
 // and optional hooks (english: letter-sound tokens and the parent's sound choice; hangul: "<item> <ending>" clips, jamo names).
 import { audioContext, outputNode } from './fx.js';
 import { asset } from './env.js';
 
 const NO_HOOKS = { suffixes: null, resolve: null, ttsText: null, spokenForm: null, keepTtsResult: false };
-let cfg = { files: new Set(), hash: t => String(t), base: '', subject: null, ...NO_HOOKS };
+let cfg = { files: new Set(), hash: t => String(t), base: '', sources: [], subject: null, ...NO_HOOKS };
 export let PHRASES = {};
 export const SPEECH_OVERRIDES = {};
 
@@ -17,8 +17,8 @@ export const SPEECH_OVERRIDES = {};
 //   suffixes: endings a sentence may be split at ("나" + "열매를 따볼까?"), resolve(piece, choices): the clip token played,
 //   ttsText(piece): { lang, text } for the built-in voice, spokenForm(token): how a letter is said,
 //   keepTtsResult: speak() reports the built-in voice's own result even when a newer speech cut it off
-export function configureSpeech({ index, hash, base = 'voice/', subject, phrases = {}, extra = {} }) {
-  cfg = { files: index, hash, base, subject, ...NO_HOOKS, ...extra };
+export function configureSpeech({ index, hash, base = 'voice/', subject, sources = [], phrases = {}, extra = {} }) {
+  cfg = { files: index, hash, base, subject, sources, ...NO_HOOKS, ...extra };
   PHRASES = phrases;
   buffers.clear();
 }
@@ -80,7 +80,11 @@ export const pieces = x => (Array.isArray(x) ? x : [x]).map(t => String(t ?? '')
 let volume = 0.8;
 export function setSpeechVolume(v) { volume = Math.max(0, Math.min(1, Number(v))); }
 
-export const hasClip = token => cfg.files.has(cfg.hash(token));
+// Sources share the token hash and base path. Each index points to its own asset directory.
+function clipSource(hash) {
+  return cfg.files.has(hash) ? cfg : cfg.sources.find(source => source.index.has(hash));
+}
+export const hasClip = token => !!clipSource(cfg.hash(token));
 
 // Clip-able parts of a piece: the exact clip, or "<item> <ending>" (subjects that give endings), or null (built-in voice)
 export function clipParts(text) {
@@ -101,7 +105,8 @@ function loadClip(token) {
   const h = cfg.hash(token);
   if (!buffers.has(h)) {
     const ctx = audioContext();
-    const p = ctx ? fetch(asset(cfg.base + h + '.mp3', cfg.subject)).then(r => { if (!r.ok) throw new Error('nofile'); return r.arrayBuffer(); }).then(b => ctx.decodeAudioData(b)) : Promise.reject(new Error('noaudio'));
+    const subject = clipSource(h)?.subject ?? cfg.subject;
+    const p = ctx ? fetch(asset(cfg.base + h + '.mp3', subject)).then(r => { if (!r.ok) throw new Error('nofile'); return r.arrayBuffer(); }).then(b => ctx.decodeAudioData(b)) : Promise.reject(new Error('noaudio'));
     buffers.set(h, p);
     p.catch(() => buffers.delete(h));
   }
@@ -125,7 +130,7 @@ async function playClips(parts, my) {
   if (!ctx) return false;
   // resume() can stay pending forever without a user gesture: never wait on it for long
   if (ctx.state === 'suspended') { try { await Promise.race([ctx.resume(), new Promise(r => setTimeout(r, 300))]); } catch { /* ignore */ } }
-  if (ctx.state !== 'running') return false;
+  if (ctx.state !== 'running') return null; // locked: skip this piece without using TTS
   for (let i = 0; i < parts.length; i++) {
     let buf;
     try { buf = await loadClip(parts[i]); } catch { return false; }
@@ -194,7 +199,7 @@ export async function speak(x, opts = {}) {
     const parts = clipParts(piece);
     let ok = !!(parts && parts.length) && await playClips(parts, my);
     if (my !== token) return true;
-    if (!ok) {
+    if (ok === false) {
       ok = await tts(ttsText(piece), opts, my);
       if (my !== token && !cfg.keepTtsResult) return true;
     }

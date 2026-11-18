@@ -344,8 +344,9 @@ body[data-subject] > .overlay.goal-gift { background: radial-gradient(circle,#FF
 /* the first gift box (a character is born) looks like every later gift box: no frame, the same warm glow */
 body[data-subject] > .overlay:not(.stage):not(.parent-panel):not(.parent-gate):not(.goal-gift):is(:has(> .gift), :has(> .born)) { background: radial-gradient(circle,#FFF8D6,#FFE3F0) !important; }
 body[data-subject] > .overlay > .gift { outline: 0; background: none; box-shadow: none; border-radius: 0; }
-/* a letter on a picture card of the find play (carrot, egg, car ...) keeps a hard white edge so it can be read on any picture (no blur) */
-.overlay.stage .item[data-text] { text-shadow: 3px 0 #fff, -3px 0 #fff, 0 3px #fff, 0 -3px #fff, 2px 2px #fff, -2px 2px #fff, 2px -2px #fff, -2px -2px #fff !important; }
+/* a letter on a picture keeps a hard white edge so it can be read on any picture (no blur): the cards of the find play
+   (carrot, egg, car ...) and the picture tokens of the other plays (butterfly, leaf, firefly, shell, rose ...) */
+.overlay.stage :is(.item[data-text], .fruit[style*="url("], .floater[style*="url("], .faller[style*="url("]) { text-shadow: 3px 0 #fff, -3px 0 #fff, 0 3px #fff, 0 -3px #fff, 2px 2px #fff, -2px 2px #fff, 2px -2px #fff, -2px -2px #fff !important; }
 /* the decoration bag: cards big enough to tell the decorations apart (eight still fit in two rows) */
 .overlay .deco-btn { width: min(21vw, 30vh) !important; height: min(23.7vw, 33.9vh) !important; }
 .overlay .deco-btn > div { width: 86% !important; }

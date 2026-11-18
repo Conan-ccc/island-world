@@ -3,6 +3,7 @@ import { makeStepper, startLoop } from './loop.js';
 import { attachInput } from './input.js';
 import { drawHero, preloadArt } from '../art.js';
 import { playSfx, SFX_NAMES } from '../../core/fx.js';
+import { questionSpeech } from '../voice.js';
 import { speak, stopSpeech } from '../../core/speech.js';
 
 export function startPlay(root, game, stageNo, options) {
@@ -73,7 +74,7 @@ export function startPlay(root, game, stageNo, options) {
     speak(game.meta.how);
   }
   syncPause(); draw();
-  if (!guiding && s.g.question?.say) speak(s.g.question.say);
+  if (!guiding && s.g.question?.say) speak(questionSpeech(s.g.question));
   return {
     session: s,
     advance(inputValue, dt = 1 / 60) { update(dt, inputValue); if (!stopped) draw(); },

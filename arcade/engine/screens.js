@@ -3,7 +3,8 @@ import { countStars } from '../../core/stars.js';
 import { warmCache } from '../../core/register-sw.js';
 import { siteUrl } from '../../core/env.js';
 import { unlockAudio, playMusic, stopMusic, playSfx, setVolume, setMusic } from '../../core/fx.js';
-import { speak, unlockSpeech, setSpeechVolume, stopSpeech } from '../../core/speech.js';
+import { configureSpeech, speak, unlockSpeech, setSpeechVolume, stopSpeech } from '../../core/speech.js';
+import { arcadeVoice, lines, heroLine, startLine } from '../voice.js';
 import { HEROES, fit } from '../heroes.js';
 import { GAME_STARS, syncArcade, gameOpen, canWelcome, welcome, nextHero, stageOpen, helpCard, suggestGame, suggestStage } from '../unlock.js';
 import { pool, tierOf } from '../content.js';
@@ -13,6 +14,7 @@ import { recordResult } from './session.js';
 import { startPlay } from './play.js';
 
 export function startArcade(root = document.getElementById('arcade')) {
+  configureSpeech(arcadeVoice);
   const state = loadState(undefined, { own: 'arcade' });
   warmCache(['assets/arcade/']);
   let play = null, lastSession = null, greeted = false;
@@ -23,6 +25,13 @@ export function startArcade(root = document.getElementById('arcade')) {
   setPal(state); setVolume(state.settings.volume); setSpeechVolume(state.settings.volume); setMusic(state.settings.music);
   function sound() { unlockAudio(); unlockSpeech(); playMusic(); }
   root.addEventListener('click', sound, { once: true, capture: true });
+  // A first tap on a button plays both the greeting and that button's prompt in order.
+  function homePrompt(line) {
+    const prompt = !greeted && line !== lines.choose ? [lines.choose, line] : line;
+    greeted = true;
+    speak(prompt);
+  }
+  root.addEventListener('click', () => { if (!greeted) homePrompt(lines.choose); }, { once: true });
   function stop() { play?.stop(); play = null; }
   function page(title, back) {
     stop(); stopSpeech(); root.replaceChildren(); root.scrollTop = 0; root.style.backgroundImage = '';
@@ -30,7 +39,7 @@ export function startArcade(root = document.getElementById('arcade')) {
     button(header, '돌아가기', back, 'arc-back');
     const h = document.createElement('h1'); h.textContent = title; header.append(h);
     const jar = button(header, `★ ${countStars(state)}`, () => {
-      const next = nextHero(state); speak(next ? `별 ${next.need}개 더 모으면 새 친구가 와!` : '친구들이 모두 왔어!');
+      const next = nextHero(state); homePrompt(next ? lines.nextFriend : lines.allFriends);
     }, 'star-jar'); jar.setAttribute('aria-label', `별 ${countStars(state)}개`);
     root.append(header); return root;
   }
@@ -50,10 +59,10 @@ export function startArcade(root = document.getElementById('arcade')) {
       const bar = document.createElement('progress'); bar.max = hero(next.hero).stars; bar.value = countStars(state); box.append(bar);
     }
     for (const id of canWelcome(state)) button(root, `${hero(id).name} 데려오기`, () => {
-      if (!welcome(state, id)) return; save(); page('새 친구가 왔어!', home);
+      if (!welcome(state, id)) return; save(); page(lines.welcome, home);
       const scene = section(root, 'arc-result'); scene.innerHTML = heroIcon(id);
       const text = document.createElement('h2'); text.textContent = hero(id).name; scene.append(text);
-      playSfx('fanfare'); speak('새 친구가 왔어!'); button(scene, '함께 놀자', home, 'arc-welcome-done');
+      playSfx('fanfare'); homePrompt(lines.welcome); button(scene, '함께 놀자', home, 'arc-welcome-done');
     }, 'arc-welcome');
     const grid = section(root, 'arc-grid');
     const suggested = suggestGame(state);
@@ -62,7 +71,7 @@ export function startArcade(root = document.getElementById('arcade')) {
       const b = button(grid, game.meta.name, () => {
         if (open) return stages(game);
         b.classList.remove('arc-shake'); void b.offsetWidth; b.classList.add('arc-shake');
-        speak(`별 ${Math.max(1, GAME_STARS[id] - countStars(state))}개 더 모으면 열려!`);
+        homePrompt(lines.locked);
       }, 'arc-game' + (open ? '' : ' locked') + (suggested === id ? ' arc-suggest' : ''));
       b.dataset.game = id;
       if (!open) b.setAttribute('aria-disabled', 'true');
@@ -74,7 +83,6 @@ export function startArcade(root = document.getElementById('arcade')) {
       if (suggested === id) { const hand = section(picture, 'arc-hand'); hand.textContent = '👆'; hand.setAttribute('aria-hidden', 'true'); }
     }
     root.querySelector('.arc-suggest')?.scrollIntoView({ block: 'nearest' });
-    if (!greeted) { greeted = true; speak('하고 싶은 놀이를 눌러봐!'); }
   }
   function gameIcon(game) {
     const icon = document.createElement('span'); icon.className = 'hero-picture'; icon.innerHTML = heroIcon('pal');
@@ -105,7 +113,7 @@ export function startArcade(root = document.getElementById('arcade')) {
           for (const item of row.children) {
             const selected = item.dataset.hero === h.id; item.classList.toggle('selected', selected); item.setAttribute('aria-pressed', String(selected));
           }
-          speak(`${h.name}랑 놀자!`);
+          speak(heroLine(h));
         }, 'arc-hero' + ((state.arcade.heroes.picked ?? 'pal') === h.id ? ' selected' : ''));
         b.innerHTML = heroIcon(h.id) + `<small>${'♥'.repeat(fit(game, h.id))}</small>`;
         b.dataset.hero = h.id; b.setAttribute('aria-label', h.name);
@@ -128,12 +136,12 @@ export function startArcade(root = document.getElementById('arcade')) {
     for (let n = 1; n <= 30; n++) {
       const medals = state.arcade.games[game.meta.id]?.medals[n - 1] || 0, open = stageOpen(state, game.meta.id, n);
       const b = button(grid, open ? `${n} ${'●'.repeat(medals)}` : '🔒', () => {
-        if (open) begin(game, n); else speak('앞 판을 먼저 해 보자!');
+        if (open) begin(game, n); else speak(lines.previous);
       }, tierOf(n) + ' arc-stage' + (open ? '' : ' locked'));
       b.dataset.stage = n; if (!open) b.setAttribute('aria-disabled', 'true');
       b.setAttribute('aria-label', `${n}단계 메달 ${medals}개`);
     }
-    speak(`${game.meta.name}! 초록 단추를 누르면 시작해!`);
+    homePrompt(startLine(game.meta));
   }
   function begin(game, n) {
     if (!gameOpen(state, game.meta.id) || !stageOpen(state, game.meta.id, n)) return home();
@@ -152,10 +160,10 @@ export function startArcade(root = document.getElementById('arcade')) {
     const key = `${game.meta.id}:${n}`, clear = s.done === 'clear';
     if (clear) { recordResult(state, game.meta.id, n, s); save(); failures.delete(key); }
     else failures.set(key, (failures.get(key) || 0) + 1);
-    page(clear ? '해냈어!' : '다시 해볼까?', () => stages(game));
+    page(clear ? lines.clear : '다시 해볼까?', () => stages(game));
     const box = section(root, 'arc-result'); box.dataset.result = s.done;
     box.innerHTML = heroIcon(s.heroId, clear ? 'happy' : 'sad');
-    if (clear) { const medals = section(box, 'medals'); medals.textContent = '🏅'.repeat(s.medals); playSfx('fanfare'); speak('해냈어!'); }
+    if (clear) { const medals = section(box, 'medals'); medals.textContent = '🏅'.repeat(s.medals); playSfx('fanfare'); speak(lines.clear); }
     const actions = section(box, 'arc-result-actions');
     button(actions, clear ? '한 번 더' : '다시 해볼까?', () => begin(game, n), 'arc-retry' + (clear ? '' : ' arc-primary'));
     if (clear && n < 30) button(actions, '다음', () => begin(game, n + 1), 'arc-next-stage arc-primary');

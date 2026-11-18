@@ -36,11 +36,13 @@ function shuffle(items, rng) {
   return out;
 }
 
+export const FIRST_OPERAND = 10, LAST_OPERAND = 99;
+const operand = rng => FIRST_OPERAND + Math.floor(rng() * (LAST_OPERAND - FIRST_OPERAND + 1));
 export function round(tokens, tier, rng, askText = '이걸 모아!') {
   const source = tokens.length ? tokens : pool(null, 'mix', tier);
   // One quarter of star rounds include arithmetic, only when number is selected.
   if (tier === 'star' && source.some(t => t.subject === 'number') && rng() < .25) {
-    const a = 10 + Math.floor(rng() * 90), b = 10 + Math.floor(rng() * 90);
+    const a = operand(rng), b = operand(rng);
     const plus = rng() < .5, hi = Math.max(a, b), lo = Math.min(a, b);
     const answer = plus ? a + b : hi - lo;
     const ask = token('number', plus ? `${a}+${b}` : `${hi}-${lo}`);
