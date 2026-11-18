@@ -115,5 +115,5 @@ export const THEMES = {
   },
 };
 
-export const HOME_MUSIC = 'music/home.mp3';
+export const HOME_MUSIC = 'music/home-hangul.mp3';
 export function themeOf(n) { return THEMES[n] || generic(n, ''); }

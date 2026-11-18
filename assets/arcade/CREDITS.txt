@@ -294,3 +294,4 @@ games/slide/rock.webp — generated for this project
 games/slide/star.webp — generated for this project
 games/slide/hole.webp — generated for this project
 icons/slide.webp — generated for this project
+Background music: generated with ElevenLabs Music (music_v1), 2026-11

@@ -3,7 +3,7 @@
 // Missing clips can fall back to the built-in voice. A prepared clip stays silent while audio is locked.
 // What differs between the subjects comes in once per page with configureSpeech(): the clip index and hash, the phrases,
 // and optional hooks (english: letter-sound tokens and the parent's sound choice; hangul: "<item> <ending>" clips, jamo names).
-import { audioContext, outputNode } from './fx.js';
+import { audioContext, outputNode, duckMusic } from './fx.js';
 import { asset } from './env.js';
 
 const NO_HOOKS = { suffixes: null, resolve: null, ttsText: null, spokenForm: null, keepTtsResult: false };
@@ -117,13 +117,19 @@ export function preloadSpeech(list) {
 }
 
 let current = null;
-let token = 0;
+let token = 0, releaseTimer;
+function speechStarted() { clearTimeout(releaseTimer); duckMusic(true); }
+function speechEnded(my) {
+  if (my !== token) return;
+  clearTimeout(releaseTimer);
+  releaseTimer = setTimeout(() => duckMusic(false), 300);
+}
 function stopCurrent() {
   token++;
   if (current) { try { current.stop(); } catch { /* ignore */ } current = null; }
   try { globalThis.speechSynthesis?.cancel(); } catch { /* ignore */ }
 }
-export function stopSpeech() { stopCurrent(); }
+export function stopSpeech() { stopCurrent(); clearTimeout(releaseTimer); duckMusic(false); }
 
 async function playClips(parts, my) {
   const ctx = audioContext();
@@ -139,9 +145,10 @@ async function playClips(parts, my) {
       const src = ctx.createBufferSource(); const g = ctx.createGain();
       g.gain.value = Math.max(0.0001, volume * 1.25);
       src.buffer = buf; src.connect(g); g.connect(outputNode() || ctx.destination);
-      src.onended = res; current = src; src.start();
+      src.onended = res; current = src; src.start(); speechStarted();
       setTimeout(res, buf.duration * 1000 + 400);
     });
+    speechEnded(my);
     if (my !== token) return true;
     if (i < parts.length - 1) await new Promise(r => setTimeout(r, 90));
   }
@@ -173,7 +180,7 @@ function tts({ lang, text }, opts, my) {
   if (!text || !s || typeof SpeechSynthesisUtterance === 'undefined') return Promise.resolve(false);
   return new Promise(resolve => {
     let done = false;
-    const finish = ok => { if (!done) { done = true; clearTimeout(timer); resolve(ok); } };
+    const finish = ok => { if (!done) { done = true; clearTimeout(timer); speechEnded(my); resolve(ok); } };
     const timer = setTimeout(() => finish(false), Math.max(3000, String(text).length * 400));
     try {
       const u = new SpeechSynthesisUtterance(String(text));
@@ -181,6 +188,7 @@ function tts({ lang, text }, opts, my) {
       u.volume = volume;
       if (!voices[lang]) voices[lang] = pickVoice(lang);
       if (voices[lang]) u.voice = voices[lang];
+      u.onstart = () => { if (!done && my === token) speechStarted(); };
       u.onend = () => finish(my === token); u.onerror = () => finish(false);
       s.speak(u);
     } catch { finish(false); }
@@ -191,7 +199,7 @@ function tts({ lang, text }, opts, my) {
 export async function speak(x, opts = {}) {
   const list = pieces(x);
   if (!list.length) return false;
-  stopCurrent();
+  speechEnded(token); stopCurrent();
   const my = token;
   let all = true;
   for (let i = 0; i < list.length; i++) {

@@ -13,7 +13,7 @@ export const mechAt = (place, visits = 0) => { const seq = mechsOf(place); retur
 
 export const THEMES = {
   1: {
-    n: 1, name: '농장 섬', music: 'music/island7.mp3', map: 'world/1/map.jpg', spots: 'theme/1/map.json',
+    n: 1, name: '농장 섬', music: 'music/island1.mp3', map: 'world/1/map.jpg', spots: 'theme/1/map.json',
     places: [
       { id: 'henhouse', mech: 'fruit', skin: { bg: 'theme/1/act-henhouse.jpg', item: 'theme/1/egg.webp', target: 'theme/1/basket.webp' } },
       { id: 'pond', mech: 'rise', skin: { bg: 'theme/1/act-pond.jpg', dir: 'rise' } },
@@ -24,7 +24,7 @@ export const THEMES = {
     ],
   },
   2: {
-    n: 2, name: '곤충 섬', music: 'music/island8.mp3', map: 'world/2/map.jpg', spots: 'theme/2/map.json',
+    n: 2, name: '곤충 섬', music: 'music/island2.mp3', map: 'world/2/map.jpg', spots: 'theme/2/map.json',
     places: [
       { id: 'flowers', mech: 'rise', skin: { bg: 'theme/2/act-flowers.jpg', item: 'theme/2/butterfly.webp', dir: 'rise' } },
       { id: 'bud', mech: 'find', skin: { bg: 'theme/2/act-bud.jpg', item: 'theme/2/bud.webp', open: 'theme/2/bloom.webp', reveal: ['theme/2/ladybug.webp', 'theme/2/bee.webp', 'theme/2/caterpillar.webp'] } },
@@ -35,7 +35,7 @@ export const THEMES = {
     ],
   },
   3: {
-    n: 3, name: '바다 섬', music: 'music/island1.mp3', map: 'world/3/map.jpg', spots: 'theme/3/map.json',
+    n: 3, name: '바다 섬', music: 'music/island3.mp3', map: 'world/3/map.jpg', spots: 'theme/3/map.json',
     places: [
       { id: 'shore', mech: 'fruit', skin: { bg: 'theme/3/act-shore.jpg', item: 'theme/3/shell.webp', target: 'theme/3/bucket.webp' } },
       { id: 'reef', mech: 'rise', skin: { bg: 'theme/3/act-reef.jpg', dir: 'rise' } },
@@ -46,7 +46,7 @@ export const THEMES = {
     ],
   },
   4: {
-    n: 4, name: '과일 섬', music: 'music/island2.mp3', map: 'world/4/map.jpg', spots: 'theme/4/map.json',
+    n: 4, name: '과일 섬', music: 'music/island4.mp3', map: 'world/4/map.jpg', spots: 'theme/4/map.json',
     places: [
       { id: 'tree', mech: 'fruit', skin: { bg: 'theme/4/act-tree.jpg', item: 'theme/4/peach.webp', target: 'theme/4/fruitbasket.webp' } },
       { id: 'vines', mech: 'rise', skin: { bg: 'theme/4/act-vines.jpg', item: 'theme/4/berry.webp', dir: 'fall' } },
@@ -57,7 +57,7 @@ export const THEMES = {
     ],
   },
   5: {
-    n: 5, name: '공룡 섬', music: 'music/island3.mp3', map: 'world/5/map.jpg', spots: 'theme/5/map.json',
+    n: 5, name: '공룡 섬', music: 'music/island5.mp3', map: 'world/5/map.jpg', spots: 'theme/5/map.json',
     places: [
       { id: 'nest', mech: 'find', skin: { bg: 'theme/5/act-nest.jpg', item: 'theme/5/egg.webp', open: 'theme/5/egg-crack.webp', reveal: ['theme/5/baby-1.webp', 'theme/5/baby-2.webp', 'theme/5/baby-3.webp'] } },
       { id: 'tree', mech: 'rise', skin: { bg: 'theme/5/act-tree.jpg', item: 'theme/5/leaf.webp', dir: 'fall' } },
@@ -68,7 +68,7 @@ export const THEMES = {
     ],
   },
   6: {
-    n: 6, name: '탈것 섬', music: 'music/island4.mp3', map: 'world/6/map.jpg', spots: 'theme/6/map.json',
+    n: 6, name: '탈것 섬', music: 'music/island6.mp3', map: 'world/6/map.jpg', spots: 'theme/6/map.json',
     places: [
       { id: 'station', mech: 'count', skin: { bg: 'theme/6/act-station.jpg' } },
       { id: 'road', mech: 'rise', skin: { bg: 'theme/6/act-road.jpg', dir: 'rise' } },
@@ -79,7 +79,7 @@ export const THEMES = {
     ],
   },
   7: {
-    n: 7, name: '별밤 섬', music: 'music/island5.mp3', map: 'world/7/map.jpg', spots: 'theme/7/map.json',
+    n: 7, name: '별밤 섬', music: 'music/island7.mp3', map: 'world/7/map.jpg', spots: 'theme/7/map.json',
     places: [
       { id: 'tent', mech: 'count', skin: { bg: 'theme/7/act-tent.jpg' } },
       { id: 'fireflies', mech: 'rise', skin: { bg: 'theme/7/act-fireflies.jpg', item: 'theme/7/firefly.webp', dir: 'rise' } },
@@ -90,7 +90,7 @@ export const THEMES = {
     ],
   },
   8: {
-    n: 8, name: '성 섬', music: 'music/island6.mp3', map: 'world/8/map.jpg', spots: 'theme/8/map.json',
+    n: 8, name: '성 섬', music: 'music/island8.mp3', map: 'world/8/map.jpg', spots: 'theme/8/map.json',
     places: [
       { id: 'garden', mech: 'fruit', skin: { bg: 'theme/8/act-garden.jpg', item: 'theme/8/rose.webp', target: 'theme/8/vase.webp' } },
       { id: 'hall', mech: 'count', skin: { bg: 'theme/8/act-hall.jpg' } },
@@ -102,7 +102,7 @@ export const THEMES = {
   },
 };
 
-export const HOME_MUSIC = 'music/home.mp3';
+export const HOME_MUSIC = 'music/home-number.mp3';
 export function themeOf(n) { const t = THEMES[n]; if (!t) throw new Error('no-theme:' + n); return t; }
 
 export const HOME_MAP = 'world/home.jpg';

@@ -2,18 +2,20 @@ import { loadState, saveState } from '../../core/save.js';
 import { countStars } from '../../core/stars.js';
 import { warmCache } from '../../core/register-sw.js';
 import { siteUrl } from '../../core/env.js';
-import { unlockAudio, playMusic, stopMusic, playSfx, setVolume, setMusic } from '../../core/fx.js';
+import { unlockAudio, stopMusic, playSfx, setVolume, setMusic } from '../../core/fx.js';
 import { configureSpeech, speak, unlockSpeech, setSpeechVolume, stopSpeech } from '../../core/speech.js';
 import { arcadeVoice, lines, heroLine, startLine } from '../voice.js';
 import { HEROES, fit } from '../heroes.js';
 import { GAME_STARS, syncArcade, gameOpen, canWelcome, welcome, nextHero, stageOpen, helpCard, suggestGame, suggestStage } from '../unlock.js';
 import { pool, tierOf } from '../content.js';
 import { heroIcon, setPal, ART } from '../art.js';
+import { arcadeMusic } from '../music.js';
 import { GAMES } from '../games/index.js';
 import { recordResult } from './session.js';
 import { startPlay } from './play.js';
 
 export function startArcade(root = document.getElementById('arcade')) {
+  const music = arcadeMusic();
   configureSpeech(arcadeVoice);
   const state = loadState(undefined, { own: 'arcade' });
   warmCache(['assets/arcade/']);
@@ -23,7 +25,7 @@ export function startArcade(root = document.getElementById('arcade')) {
   const save = () => { saveState(state); return state.arcade; };
   if (syncArcade(state)) save();
   setPal(state); setVolume(state.settings.volume); setSpeechVolume(state.settings.volume); setMusic(state.settings.music);
-  function sound() { unlockAudio(); unlockSpeech(); playMusic(); }
+  function sound() { unlockAudio(); unlockSpeech(); music.unlock(); }
   root.addEventListener('click', sound, { once: true, capture: true });
   // A first tap on a button plays both the greeting and that button's prompt in order.
   function homePrompt(line) {
@@ -51,6 +53,7 @@ export function startArcade(root = document.getElementById('arcade')) {
   function home() {
     if (syncArcade(state)) save();
     page('놀이동산', entrance);
+    music.screen();
     if (ART.home) root.style.backgroundImage = `url("${siteUrl(ART.home)}")`;
     const next = nextHero(state);
     if (next) {
@@ -97,6 +100,7 @@ export function startArcade(root = document.getElementById('arcade')) {
   function stages(game) {
     if (!gameOpen(state, game.meta.id)) return home();
     page(game.meta.name, home);
+    music.screen(game);
     root.querySelector('h1').prepend(gameIcon(game));
     const background = ART.games[game.meta.id]?.background;
     if (background) root.style.backgroundImage = `linear-gradient(#fffdf6df, #fffdf6df), url("${siteUrl(background)}")`;
